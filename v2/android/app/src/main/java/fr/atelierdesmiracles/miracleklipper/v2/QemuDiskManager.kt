@@ -1,13 +1,21 @@
 package fr.atelierdesmiracles.miracleklipper.v2
 
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.io.RandomAccessFile
 
 sealed class DiskProvisionResult {
     data class Ready(val file: File, val created: Boolean) : DiskProvisionResult()
     data class Invalid(val reason: String) : DiskProvisionResult()
     data class Failed(val reason: String) : DiskProvisionResult()
-    /** Copies the runtime seed disk once and preserves the writable guest disk on later upgrades. */
+}
+
+/**
+ * Guest disk provisioning. The seed is copied only on first install;
+ * existing writable guest data is never silently replaced or truncated.
+ */
+object QemuDiskManager {
     fun ensureSeededDisk(destination: File, seedImage: File): DiskProvisionResult {
         if (!seedImage.isFile || seedImage.length() <= 0L) {
             return DiskProvisionResult.Invalid("L'image disque initiale est absente ou vide.")
@@ -26,8 +34,8 @@ sealed class DiskProvisionResult {
             }
             val temporary = File(parent, destination.name + ".installing")
             temporary.delete()
-            java.io.FileInputStream(seedImage).use { input ->
-                java.io.FileOutputStream(temporary).use { output ->
+            FileInputStream(seedImage).use { input ->
+                FileOutputStream(temporary).use { output ->
                     input.copyTo(output, 1024 * 1024)
                     output.fd.sync()
                 }
@@ -42,13 +50,6 @@ sealed class DiskProvisionResult {
         }
     }
 
-}
-
-/**
- * Creates a sparse raw disk in app-private storage. Existing disks are never
- * truncated or silently resized.
- */
-object QemuDiskManager {
     fun ensureRawDisk(file: File, sizeMb: Int): DiskProvisionResult {
         if (sizeMb !in 512..131072) {
             return DiskProvisionResult.Invalid("La taille du disque doit être comprise entre 512 et 131072 Mo.")
