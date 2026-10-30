@@ -54,7 +54,7 @@ The SHA-256 manifest detects file corruption or a payload that does not match it
 |---|---|---|
 | `127.0.0.1:8080` | TCP hostfwd | nginx/Mainsail on guest port 8080 |
 | `127.0.0.1:7125` | TCP hostfwd | Moonraker on guest port 7125 |
-| `127.0.0.1:<ephemeral>` | QEMU socket chardev | virtio-serial → socat → `/dev/ttyUSB0` |
+| `127.0.0.1:<ephemeral>` | QEMU socket chardev | virtio-serial → socat → `/dev/ttyMiracleMCU` |
 
 The guest nginx and Moonraker daemons bind to `0.0.0.0` inside the isolated QEMU user network so host forwarding can reach them. The QEMU hostfwd listeners bind only to Android `127.0.0.1`; do not change the host-side bind to `0.0.0.0` without an explicit authentication and security review. The guest is not bridged onto the phone's LAN. Moonraker trusts the QEMU user-network source subnet and must not be exposed directly to an untrusted LAN. Loopback-only host binding reduces network exposure but is not an Android per-app access-control boundary.
 
@@ -64,7 +64,7 @@ The guest OpenRC first-boot service installs the pinned stack if it is not alrea
 
 ## USB and physical printer boundary
 
-Android USB Host remains the permission authority. A serial bridge is now implemented in code: Android uses the usb-serial-for-android drivers for CDC/ACM, FTDI, CP210x and CH340 devices; it requests USB permission, opens the selected serial port, and bridges bytes through a loopback TCP socket on 127.0.0.1:<port éphémère>. QEMU connects that socket to a virtio-serial port named org.miracle.usbserial. Alpine uses socat to expose the virtio port as /dev/ttyUSB0 for Klipper. This is a serial bridge, not raw USB passthrough. It still requires CI compilation and physical-device testing.
+Android USB Host remains the permission authority. A serial bridge is now implemented in code: Android uses the usb-serial-for-android drivers for CDC/ACM, FTDI, CP210x and CH340 devices; it requests USB permission, opens the selected serial port, and bridges bytes through a loopback TCP socket on 127.0.0.1:<port éphémère>. QEMU connects that socket to a virtio-serial port named org.miracle.usbserial. Alpine uses socat to expose the virtio port as /dev/ttyMiracleMCU for Klipper. This is a serial bridge, not raw USB passthrough. It still requires CI compilation and physical-device testing.
 
 VID/PID alone is not a unique device identity. Acceptance requires real CDC ACM, CH340, CP210x and FTDI tests, including disconnect/reconnect and permission revocation.
 
