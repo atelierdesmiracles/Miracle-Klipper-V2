@@ -81,7 +81,12 @@ configure = r'''termux_step_configure() {
 		--disable-vnc-jpeg \
 		--enable-fdt=system \
 		--enable-slirp \
-		--audio-drv-list= \
+		--audio-drv-list=oss \
+		--disable-pa \
+		--disable-alsa \
+		--disable-jack \
+		--disable-pipewire \
+		--disable-sndio \
 		--target-list="$QEMU_TARGETS"
 }
 
