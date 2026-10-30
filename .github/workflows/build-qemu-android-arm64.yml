@@ -62,6 +62,13 @@ jobs:
             (cd qemu-output && sha256sum * > SHA256SUMS)
           fi
 
+      - name: Audit Android QEMU ELF package
+        if: success()
+        run: |
+          package="$(find qemu-output -maxdepth 1 -type f -name 'qemu-system-aarch64_*.deb' -print -quit)"
+          test -n "$package"
+          bash scripts/audit-qemu-android-package.sh "$package"
+
       - name: Upload QEMU package artifacts and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
