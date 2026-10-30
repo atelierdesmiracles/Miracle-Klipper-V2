@@ -51,8 +51,12 @@ class VmRuntimeService : Service() {
             ACTION_STOP -> {
                 stopping.set(true)
                 worker.execute {
-                    controller.stop()
+                    val cleanShutdown = controller.stop()
                     printMonitor.disconnect()
+                    publishMonitorStatus(
+                        if (cleanShutdown) "Machine virtuelle arrêtée proprement."
+                        else "QEMU arrêté sans confirmation d'arrêt propre du système invité. Vérifiez le disque avant une nouvelle impression."
+                    )
                     completionMusic.stop()
                     running = false
                     releaseWakeLock()
@@ -214,7 +218,7 @@ class VmRuntimeService : Service() {
 
     override fun onDestroy() {
         stopping.set(true)
-        controller.stop()
+        controller.stop(gracefulTimeoutMs = 1000L)
         printMonitor.shutdown()
         completionMusic.stop()
         running = false
