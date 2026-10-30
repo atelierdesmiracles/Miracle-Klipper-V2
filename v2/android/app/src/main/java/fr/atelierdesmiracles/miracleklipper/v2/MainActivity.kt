@@ -252,7 +252,7 @@ class MainActivity : Activity() {
 
     private fun refreshRuntimeStatus() {
         runtimeStatus.text = buildString {
-            append(if (RuntimeBundleInstaller.isInstalled(this@MainActivity)) "Runtime importé et SHA-256 vérifié" else "Runtime non installé")
+            append(if (RuntimeBundleInstaller.isInstalled(this@MainActivity)) "Runtime installé — SHA-256 contrôlé au démarrage" else "Runtime non installé")
             appendLine()
             append("VM : ")
             append(if (VmRuntimeService.running) "en cours d'exécution" else "arrêtée")
@@ -296,7 +296,7 @@ class MainActivity : Activity() {
             appendLine("Stockage recommandé (4 Go) : " + if (readiness.storageRecommended) "OK" else "insuffisant")
             appendLine("Pré-requis VM : " + if (readiness.readyForVmPrototype) "de base OK" else "incomplets")
             appendLine()
-            appendLine("Runtime QEMU/Alpine : " + if (RuntimeBundleInstaller.isInstalled(this@MainActivity)) "importé et vérifié" else "non installé")
+            appendLine("Runtime QEMU/Alpine : " + if (RuntimeBundleInstaller.isInstalled(this@MainActivity)) "installé" else "non installé")
             appendLine("VM QEMU : " + if (VmRuntimeService.running) "en cours" else "arrêtée")
             appendLine("Docker / Klipper / Moonraker / Mainsail dans la VM : à valider")
         }
