@@ -4,7 +4,6 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.RandomAccessFile
-import android.os.StatFs
 
 sealed class DiskProvisionResult {
     data class Ready(val file: File, val created: Boolean) : DiskProvisionResult()
@@ -34,7 +33,7 @@ object QemuDiskManager {
                 return DiskProvisionResult.Ready(destination, false)
             }
             val requiredBytes = seedImage.length() + 128L * 1024L * 1024L
-            val availableBytes = StatFs(parent.absolutePath).availableBytes
+            val availableBytes = parent.usableSpace
             if (availableBytes < requiredBytes) {
                 return DiskProvisionResult.Failed("Espace libre insuffisant pour initialiser le disque invité.")
             }
