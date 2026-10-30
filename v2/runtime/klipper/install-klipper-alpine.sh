@@ -22,7 +22,7 @@ exec >>"$LOGS/install-stack.log" 2>&1
 
 echo "[Miracle Klipper] Installing Alpine dependencies"
 apk add --no-cache ca-certificates curl git nginx openrc socat python3 py3-pip py3-virtualenv unzip procps \
-  build-base linux-headers musl-dev libffi-dev openssl-dev jpeg-dev zlib-dev
+  build-base linux-headers musl-dev libffi-dev openssl-dev jpeg-dev zlib-dev socat
 
 fetch_pinned() {
   repo="$1"
@@ -106,7 +106,7 @@ rm -rf "$tmp_zip" /tmp/mainsail-unpack
 if [ ! -f "$CONFIG/printer.cfg" ]; then
   cat > "$CONFIG/printer.cfg" <<'EOF'
 # Miracle Klipper - neutral printer configuration.
-# Add the correct [mcu] serial path and printer-specific [printer],
+# Example USB bridge: [mcu] then serial: /dev/ttyMiracleMCU (uncomment only after USB is connected).\n# Add the correct [mcu] serial path and printer-specific [printer],
 # stepper, heater, thermistor and safety sections before starting Klipper.
 EOF
 fi
