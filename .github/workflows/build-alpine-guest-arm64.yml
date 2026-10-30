@@ -7,6 +7,10 @@ on:
       - 'scripts/build-alpine-guest.sh'
       - 'v2/runtime/klipper/**'
       - '.github/workflows/build-alpine-guest-arm64.yml'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 jobs:
