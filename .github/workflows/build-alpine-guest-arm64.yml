@@ -25,7 +25,7 @@ jobs:
       - name: Install ARM64 chroot and image tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-user-static binfmt-support e2fsprogs qemu-utils qemu-system-arm
+          sudo apt-get install -y qemu-user-static binfmt-support e2fsprogs qemu-utils qemu-system-arm python3-pexpect
           sudo update-binfmts --enable qemu-aarch64
       - name: Build Alpine ARM64 kernel, initramfs and persistent root disk
         run: sudo bash scripts/build-alpine-guest.sh "$RUNNER_TEMP/alpine-guest"
