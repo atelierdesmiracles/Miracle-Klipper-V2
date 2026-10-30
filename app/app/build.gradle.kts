@@ -1,0 +1,151 @@
+plugins {
+    id("com.android.application")
+    kotlin("android")
+    kotlin("android.extensions")
+    id("com.bugsnag.android.gradle")
+    id("com.gladed.androidgitversion") version "0.4.14"
+}
+
+android {
+    compileSdk = 28
+    buildToolsVersion = "30.0.3"
+    defaultConfig {
+        applicationId = "fr.atelierdesmiracles.miracleklipper"
+        minSdk = 26
+        targetSdk = 28
+        versionName = "0.2.0-alpha.1"
+        versionCode = 2002001
+        multiDexEnabled = true
+        // Own Bugsnag project key, provided at build time. Without it, crash reporting stays off
+        // (the placeholder below is intentionally invalid) instead of reporting to upstream Octo4a.
+        manifestPlaceholders["bugsnagApiKey"] =
+            System.getenv("MIRACLE_BUGSNAG_API_KEY")?.takeIf { it.isNotBlank() }
+                ?: "00000000000000000000000000000000"
+
+        ndk {
+            abiFilters.add("x86")
+            abiFilters.add("x86_64")
+            abiFilters.add("armeabi-v7a")
+            abiFilters.add("arm64-v8a")
+        }
+
+        //testInstrumentationRunner("androidx.test.runner.AndroidJUnitRunner")
+    }
+    packagingOptions {
+        jniLibs {
+            pickFirsts += setOf("**/*.so")
+            // PRoot must be extracted into nativeLibraryDir: Android app filesDir is noexec.
+            useLegacyPackaging = true
+        }
+        resources {
+            pickFirsts += setOf("META-INF/INDEX.LIST", "META-INF/io.netty.versions.properties")
+        }
+    }
+    //    buildFeatures {
+////        // Enables Jetpack Compose for this module
+////        compose(true)
+////    }
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
+    }
+
+}
+
+dependencies {
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
+    implementation("androidx.navigation:navigation-fragment-ktx:2.3.4")
+    implementation("androidx.navigation:navigation-ui-ktx:2.3.4")
+    implementation("com.android.support:multidex:1.0.3")
+    val lifecycleVersion = "2.3.0"
+    val ktorVersion = "1.5.2"
+    val koinVersion = "3.1.2"
+    val cameraXVersion = "1.0.0"
+
+    // Android lifecycle components
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycleVersion")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:$lifecycleVersion")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:$lifecycleVersion")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-savedstate:$lifecycleVersion")
+    implementation("androidx.lifecycle:lifecycle-service:$lifecycleVersion")
+
+    // CameraX apis
+    implementation("androidx.camera:camera-core") {
+        version {
+            strictly(cameraXVersion)
+        }
+        because("Umidigi S2 Lite")
+    }
+
+    implementation("androidx.camera:camera-camera2") {
+        version {
+            strictly(cameraXVersion)
+        }
+        because("Umidigi S2 Lite")
+    }
+    implementation ("androidx.camera:camera-lifecycle") {
+        version {
+            strictly(cameraXVersion)
+        }
+        because("Umidigi S2 Lite")
+    }
+    implementation("androidx.camera:camera-view:1.0.0-alpha22")
+    implementation("androidx.camera:camera-extensions:1.0.0-alpha22")
+
+    // Android-specific dependencies
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.4.30")
+    implementation("androidx.core:core-ktx:1.3.2")
+    implementation("androidx.appcompat:appcompat:1.2.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.0-beta01")
+    implementation("androidx.preference:preference:1.1.1")
+    implementation("androidx.preference:preference-ktx:1.1.1")
+    implementation("com.google.android.material:material:1.4.0-alpha01")
+
+    // Serial driver
+    implementation("com.github.mik3y:usb-serial-for-android:3.3.0")
+
+    // YAML parser
+    implementation ("com.github.bmoliveira:snake-yaml:v1.18-android")
+
+    // Koin dependency injection
+    implementation("io.insert-koin:koin-core:$koinVersion")
+    implementation("io.insert-koin:koin-android:$koinVersion")
+
+    // Ktor server & client libraries
+    implementation("io.ktor:ktor-server-core:$ktorVersion")
+    implementation("io.ktor:ktor-server-netty:$ktorVersion")
+    implementation("io.ktor:ktor-client-android:$ktorVersion")
+    implementation("io.ktor:ktor-client-gson:$ktorVersion")
+    implementation("org.nanohttpd:nanohttpd:2.3.1")
+
+    // Native Android-side extraction of the Debian 13 tar.xz rootfs (no Octo4a minitar).
+    implementation("org.apache.commons:commons-compress:1.21")
+    implementation("org.tukaani:xz:1.9")
+    // Pin older Java 8-compatible Apache Commons artifacts to avoid D8 crashes with newer bytecode.
+    implementation("org.apache.commons:commons-lang3:3.12.0")
+
+    // Bugsnag bug reporting
+    implementation("com.bugsnag:bugsnag-android:5.12.0")
+
+    // Test dependencies
+    testImplementation("junit:junit:4.13")
+    androidTestImplementation("androidx.test.ext:junit:1.1.2")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.3.0")
+
+}

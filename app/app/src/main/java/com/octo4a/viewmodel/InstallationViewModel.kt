@@ -1,0 +1,37 @@
+package com.octo4a.viewmodel
+
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.asLiveData
+import androidx.lifecycle.viewModelScope
+import com.octo4a.repository.BootstrapRepository
+import com.octo4a.repository.GithubRelease
+import com.octo4a.repository.GithubRepository
+import com.octo4a.repository.OctoPrintHandlerRepository
+import com.octo4a.utils.getArchString
+import com.octo4a.utils.withIO
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+
+data class BootstrapItem(val title: String, val bootstrapVersion: String, val assetUrl: String, val prerelease: Boolean, var recommended: Boolean = false)
+class InstallationViewModel(context: Application, octoPrintHandlerRepository: OctoPrintHandlerRepository, private val githubRepository: GithubRepository, private val bootstrapRepository: BootstrapRepository) : AndroidViewModel(context) {
+    private var _bootstrapReleases = MutableStateFlow(listOf<BootstrapItem>())
+    private var _selectedRelease = MutableStateFlow<BootstrapItem?>(null)
+
+    val serverStatus = octoPrintHandlerRepository.serverState.asLiveData()
+    val installErrorDescription = octoPrintHandlerRepository.installErrorDescription.asLiveData()
+    val bootstrapReleases = _bootstrapReleases.asLiveData()
+    val bootstrapDownloadProgress = bootstrapRepository.downloadProgressData
+
+    fun fetchBootstrapReleases() {
+        // The Octo4a bootstrap builder is intentionally no longer queried.
+        // Miracle Klipper provisions PRoot and Debian through LinuxEnvironmentRepository.
+        _bootstrapReleases.value = emptyList()
+        _selectedRelease.value = null
+    }
+
+    fun selectBootstrapRelease(bootstrapItem: BootstrapItem) {
+        _selectedRelease.value = bootstrapItem
+        bootstrapRepository.selectReleaseForInstallation(bootstrapItem)
+    }
+}
