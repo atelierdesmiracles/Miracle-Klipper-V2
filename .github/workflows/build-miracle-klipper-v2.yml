@@ -30,7 +30,7 @@ jobs:
       - name: Validate guest runtime scripts and lock files
         run: |
           sh -n v2/runtime/klipper/install-klipper-alpine.sh
-          sh -n v2/runtime/klipper/miracle-klipper-manager.sh
+          sh -n v2/runtime/klipper/miracle-klipper-manager.sh\n          sh -n v2/runtime/klipper/miracle-klipper-instances.sh\n          sh -n v2/runtime/klipper/miracle-klipper-firmware.sh
           test -x v2/runtime/klipper/install-klipper-alpine.sh || chmod +x v2/runtime/klipper/install-klipper-alpine.sh
           grep -q 'KIAUH adaptation' docs/v2/kiauh-adaptation.md
           python3 -m json.tool v2/runtime/klipper/klipper.lock.json >/dev/null
