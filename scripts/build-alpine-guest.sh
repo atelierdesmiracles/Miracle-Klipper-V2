@@ -69,7 +69,7 @@ proc /proc proc defaults 0 0
 sysfs /sys sysfs defaults 0 0
 devtmpfs /dev devtmpfs mode=0755,nosuid 0 0
 EOF
-mkdir -p "$ROOT/root/miracle-klipper" "$ROOT/var/lib/miracle-klipper"
+mkdir -p "$ROOT/root/miracle-klipper" "$ROOT/var/lib/miracle-klipper" "$ROOT/usr/local/sbin"
 install -m 0755 "$(dirname "$0")/../v2/runtime/klipper/install-klipper-alpine.sh" "$ROOT/root/miracle-klipper/install-klipper-alpine.sh"
 install -m 0755 "$(dirname "$0")/../v2/runtime/klipper/miracle-klipper-manager.sh" "$ROOT/root/miracle-klipper/miracle-klipper-manager.sh"
 install -m 0755 "$(dirname "$0")/../v2/runtime/klipper/miracle-klipper-instances.sh" "$ROOT/root/miracle-klipper/miracle-klipper-instances.sh"
