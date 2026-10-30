@@ -28,4 +28,28 @@ class QemuDiskManagerTest {
         val result = QemuDiskManager.ensureRawDisk(File(root, "guest.raw"), 128)
         assertTrue(result is DiskProvisionResult.Invalid)
     }
+    @Test fun seedsPersistentDiskOnlyOnce() {
+        val root = Files.createTempDirectory("mk-disk-seed").toFile()
+        val seed = File(root, "seed.qcow2").apply { writeText("initial-image") }
+        val target = File(root, "persistent/guest.qcow2")
+
+        val first = QemuDiskManager.ensureSeededDisk(target, seed)
+        assertTrue(first is DiskProvisionResult.Ready)
+        assertTrue((first as DiskProvisionResult.Ready).created)
+        assertEquals("initial-image", target.readText())
+
+        target.writeText("user-data")
+        seed.writeText("new-runtime-image")
+        val second = QemuDiskManager.ensureSeededDisk(target, seed)
+        assertTrue(second is DiskProvisionResult.Ready)
+        assertFalse((second as DiskProvisionResult.Ready).created)
+        assertEquals("user-data", target.readText())
+    }
+
+    @Test fun rejectsMissingSeedImage() {
+        val root = Files.createTempDirectory("mk-disk-missing").toFile()
+        val result = QemuDiskManager.ensureSeededDisk(File(root, "guest.qcow2"), File(root, "missing.qcow2"))
+        assertTrue(result is DiskProvisionResult.Invalid)
+    }
+
 }
