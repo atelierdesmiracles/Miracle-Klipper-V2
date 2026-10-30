@@ -28,7 +28,7 @@ while mainsail_port == moonraker_port:
 serial_log = os.path.join(assets, "alpine-firstboot-serial.log")
 qemu_command = [
     qemu,
-    "-machine", "virt",
+    "-machine", "virt,acpi=on",
     "-cpu", "cortex-a57",
     "-m", "1536",
     "-smp", "2",
