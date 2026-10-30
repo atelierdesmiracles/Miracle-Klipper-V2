@@ -47,7 +47,7 @@ mount -t proc proc "$ROOT/proc"
 mount -t sysfs sysfs "$ROOT/sys"
 chroot "$ROOT" /bin/sh -euxc '
   apk update
-  apk add --no-cache alpine-base openrc ifupdown-ng linux-virt mkinitfs kmod \
+  apk add --no-cache alpine-base openrc ifupdown-ng openresolv linux-virt mkinitfs kmod \
     ca-certificates curl git nginx python3 py3-pip py3-virtualenv unzip procps \
     build-base linux-headers musl-dev libffi-dev openssl-dev jpeg-dev zlib-dev e2fsprogs
   update-ca-certificates
