@@ -31,6 +31,11 @@ tar -xzf "$ARCHIVE" -C "$ROOT"
 # The chroot shares the runner network namespace; copy the runner resolver into the guest root.
 rm -f "$ROOT/etc/resolv.conf"
 cp -L /etc/resolv.conf "$ROOT/etc/resolv.conf"
+MIRROR_IPS="$(getent ahostsv4 dl-cdn.alpinelinux.org | awk '{print $1}' | sort -u)"
+[ -n "$MIRROR_IPS" ] || { echo "Host DNS could not resolve the Alpine mirror." >&2; exit 1; }
+while IFS= read -r ip; do printf "%s dl-cdn.alpinelinux.org\n" "$ip" >> "$ROOT/etc/hosts"; done <<EOF
+$MIRROR_IPS
+EOF
 install -D -m 0755 /usr/bin/qemu-aarch64-static "$ROOT/usr/bin/qemu-aarch64-static"
 cat > "$ROOT/etc/apk/repositories" <<EOF
 $BASE_URL/main
