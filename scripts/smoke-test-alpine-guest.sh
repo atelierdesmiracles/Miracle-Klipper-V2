@@ -24,9 +24,9 @@ printf 'echo MIRACLE_ALPINE_ROOTFS_BOOT_OK\nexit\n' | timeout 75s "$QEMU" \
   -display none -monitor none -serial stdio -no-reboot > "$LOG" 2>&1
 qemu_status=$?
 set -e
-if ! grep -q "MIRACLE_ALPINE_ROOTFS_BOOT_OK" "$LOG"; then
+if ! grep -q "MIRACLE_ALPINE_ROOTFS_BOOT_OK" "$LOG" || ! grep -q "MIRACLE_VIRTIO_SERIAL_OK" "$LOG"; then
   echo "Alpine ARM64 guest did not reach its root shell (QEMU exit: $qemu_status)." >&2
   tail -n 160 "$LOG" >&2 || true
   exit 1
 fi
-echo "Alpine ARM64 kernel + initramfs + virtio block + QCOW2 root filesystem booted successfully."
+echo "Alpine ARM64 kernel + initramfs + virtio block + QCOW2 root filesystem + virtio serial booted successfully."
