@@ -21,7 +21,7 @@ mkdir -p "$BASE" "$VENV" "$CONFIG" "$LOGS" "$DATA/gcodes" "$COMMS" "$DATA/state"
 exec >>"$LOGS/install-stack.log" 2>&1
 
 echo "[Miracle Klipper] Installing Alpine dependencies"
-apk add --no-cache ca-certificates curl git nginx openrc python3 py3-pip py3-virtualenv unzip procps \
+apk add --no-cache ca-certificates curl git nginx openrc socat python3 py3-pip py3-virtualenv unzip procps \
   build-base linux-headers musl-dev libffi-dev openssl-dev jpeg-dev zlib-dev
 
 fetch_pinned() {
@@ -201,6 +201,15 @@ else
   echo "$!" > "$DATA/state/moonraker.pid"
 fi
 
+if [ -e /dev/virtio-ports/org.miracle.usbserial ] && \
+   ! pgrep -f '[s]ocat.*org.miracle.usbserial' >/dev/null 2>&1; then
+  rm -f /dev/ttyUSB0
+  nohup socat PTY,link=/dev/ttyUSB0,raw,echo=0,mode=660 \
+    /dev/virtio-ports/org.miracle.usbserial,raw,echo=0 \
+    >>"$LOGS/usb-serial-bridge.log" 2>&1 &
+  echo "$!" > "$DATA/state/usbserial.pid"
+fi
+
 if grep -Eq '^[[:space:]]*\[mcu\][[:space:]]*$' "$CONFIG/printer.cfg" &&
    grep -Eq '^[[:space:]]*\[printer\][[:space:]]*$' "$CONFIG/printer.cfg"; then
   if pgrep -f '[k]lippy/klippy.py' >/dev/null 2>&1; then
@@ -223,7 +232,7 @@ cat > /usr/local/bin/miracle-klipper-stop <<'EOF'
 #!/bin/sh
 set -u
 DATA="/var/lib/miracle-klipper"
-for service in klipper moonraker; do
+for service in klipper moonraker usbserial; do
   pidfile="$DATA/state/$service.pid"
   if [ -f "$pidfile" ]; then
     pid="$(cat "$pidfile")"
