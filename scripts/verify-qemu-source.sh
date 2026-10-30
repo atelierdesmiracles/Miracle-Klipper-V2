@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOCK="$ROOT/v2/runtime/qemu/qemu-source.lock"
 CACHE="${RUNNER_TEMP:-/tmp}/miracle-klipper-qemu-source"
 mkdir -p "$CACHE"
