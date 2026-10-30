@@ -56,7 +56,7 @@ create_instance() {
   target="$DATA/instances/$name"
   [ ! -e "$target" ] || { echo "Instance already exists: $name" >&2; exit 1; }
   port="$(next_port)"
-  mkdir -p "$target"/{config,gcodes,logs,comms}
+  mkdir -p "$target/config" "$target/gcodes" "$target/logs" "$target/comms"
   cat > "$target/instance.env" <<EOF
 NAME=$name
 PORT=$port
