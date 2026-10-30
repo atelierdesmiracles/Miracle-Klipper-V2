@@ -1,0 +1,14 @@
+{
+  "component": "QEMU system emulator",
+  "version": "11.1.2",
+  "source": "https://download.qemu.org/qemu-11.1.2.tar.xz",
+  "sha256": "731b5681e4bb18be313231579b8efd0296c5b015fa36dc533874b639ba838016",
+  "target": "aarch64-softmmu",
+  "host_abi": "Android Bionic arm64-v8a",
+  "execution": "TCG",
+  "license_declared_by_termux_recipe": "GPL-2.0",
+  "reference_repository": "https://github.com/termux/termux-packages",
+  "reference_recipe_commit": "0e1306a2df4492ce5113fe220b65c4c4a4bf6e2d",
+  "reference_recipe": "x11-packages/qemu-system-x86-64/build.sh",
+  "status": "source-pinned; Android build and APK packaging not yet validated"
+}
