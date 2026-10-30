@@ -53,7 +53,17 @@ chroot "$ROOT" /bin/sh -euxc '
   update-ca-certificates
 '
 # Do not bake the build runner DNS stub into the guest; DHCP supplies QEMU user-network DNS at boot.
-: > "$ROOT/etc/resolv.conf"
+if [ -L "$ROOT/etc/resolv.conf" ]; then
+  resolv_target="$(readlink "$ROOT/etc/resolv.conf")"
+  case "$resolv_target" in
+    /*) resolv_target="$ROOT$resolv_target" ;;
+    *) resolv_target="$ROOT/etc/$resolv_target" ;;
+  esac
+  mkdir -p "$(dirname "$resolv_target")"
+  : > "$resolv_target"
+else
+  : > "$ROOT/etc/resolv.conf"
+fi
 cat > "$ROOT/etc/hostname" <<'EOF'
 miracle-klipper
 EOF
