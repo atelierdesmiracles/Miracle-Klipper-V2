@@ -153,6 +153,7 @@ case "${1:-status}" in
     component_status klipper '[k]lippy/klippy.py' || true
     component_status moonraker '[m]oonraker/moonraker.py' || true
     component_status nginx '[n]ginx: master process' || true
+    component_status usbserial '[s]ocat.*org.miracle.usbserial' || true
     check_runtime || true
     ;;
   start) start_services ;;
@@ -174,12 +175,13 @@ case "${1:-status}" in
       klipper) tail -n 100 "$LOGS/klippy.log" "$LOGS/klipper-process.log" ;;
       moonraker) tail -n 100 "$LOGS/moonraker.log" "$LOGS/moonraker-process.log" ;;
       nginx) tail -n 100 /var/log/nginx/* 2>/dev/null || true ;;
+      usbserial) tail -n 100 "$LOGS/usb-serial-bridge.log" 2>/dev/null || true ;;
       all) tail -n 100 "$LOGS"/*.log ;;
       *) echo "Unknown service: $service" >&2; exit 2 ;;
     esac
     ;;
   *)
-    echo "Usage: $0 {status|start|stop|restart|check|docker-install|docker-start|docker-stop|docker-status|backup|restore ARCHIVE|logs [klipper|moonraker|nginx|all]}" >&2
+    echo "Usage: $0 {status|start|stop|restart|check|docker-install|docker-start|docker-stop|docker-status|backup|restore ARCHIVE|logs [klipper|moonraker|nginx|usbserial|all]}" >&2
     exit 2
     ;;
 esac
