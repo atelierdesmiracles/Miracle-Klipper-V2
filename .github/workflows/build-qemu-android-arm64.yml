@@ -2,6 +2,13 @@ name: Build QEMU Android ARM64 package
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - rewrite/miracle-klipper-v2
+    paths:
+      - '.github/workflows/build-qemu-android-arm64.yml'
+      - 'v2/runtime/qemu/**'
+      - 'scripts/verify-qemu-source.sh'
 
 permissions:
   contents: read
@@ -29,18 +36,23 @@ jobs:
           mkdir -p ../qemu-output
           ./scripts/run-docker.sh ./build-package.sh -f -I qemu-system-x86-64
           docker image inspect ghcr.io/termux/package-builder --format '{{.Id}}' > ../qemu-output/builder-image-id.txt
+          docker image inspect ghcr.io/termux/package-builder --format '{{join .RepoDigests "\\n"}}' > ../qemu-output/builder-image-digests.txt
           git rev-parse HEAD > ../qemu-output/termux-packages-commit.txt
       - name: Collect QEMU package outputs
+        if: always()
         run: |
           mkdir -p qemu-output
-          find termux-packages/output -maxdepth 1 -type f -name '*.deb' -exec cp {} qemu-output/ \;
-          find termux-packages/output -maxdepth 1 -type f -name '*.tar.xz' -exec cp {} qemu-output/ \;
-          test -n "$(find qemu-output -type f -name '*.deb' -print -quit)"
-          sha256sum qemu-output/* > qemu-output/SHA256SUMS
-      - name: Upload QEMU package artifacts
+          if [ -d termux-packages/output ]; then
+            find termux-packages/output -maxdepth 1 -type f \\( -name '*.deb' -o -name '*.tar.xz' \\) -exec cp {} qemu-output/ \\;
+          fi
+          if [ -n "$(find qemu-output -type f ! -name 'SHA256SUMS' -print -quit)" ]; then
+            sha256sum qemu-output/* > qemu-output/SHA256SUMS
+          fi
+      - name: Upload QEMU package artifacts and diagnostics
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: miracle-klipper-qemu-termux-arm64-packages
           path: qemu-output/*
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
