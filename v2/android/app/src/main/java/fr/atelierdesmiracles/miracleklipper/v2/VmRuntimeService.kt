@@ -52,6 +52,7 @@ class VmRuntimeService : Service() {
 
     private fun startVm(startId: Int) {
         try {
+            if (!RuntimeBundleInstaller.verifyInstalled(this)) error("Le runtime a échoué à la vérification SHA-256 complète.")
             val root = RuntimeBundleInstaller.runtimeDirectory(this)
             val manifest = RuntimeBundleManifest.parse(File(root, "manifest.json"))
             val disk = File(filesDir, "miracle-vm/guest.${manifest.diskFormat}")
