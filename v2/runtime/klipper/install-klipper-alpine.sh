@@ -123,8 +123,6 @@ if [ ! -f "$CONFIG/printer.cfg" ]; then
 EOF
 fi
 
-/usr/local/bin/miracle-klipper-configure-moonraker
-
 mkdir -p /run/nginx /etc/nginx/http.d
 cat > /etc/nginx/http.d/miracle-klipper.conf <<EOF
 server {
