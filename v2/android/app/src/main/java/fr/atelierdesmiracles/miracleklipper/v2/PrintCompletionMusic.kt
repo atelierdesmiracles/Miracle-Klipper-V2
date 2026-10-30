@@ -59,8 +59,10 @@ class PrintCompletionMusic(context: Context) {
     fun playSelectedTrack(): Boolean {
         val track = selectedTrack ?: return false
         stop()
+        var created: MediaPlayer? = null
         return try {
             val next = MediaPlayer()
+            created = next
             next.setAudioAttributes(audioAttributes)
             next.setDataSource(appContext, track)
             next.setOnCompletionListener { releasePlayer(it) }
@@ -83,6 +85,7 @@ class PrintCompletionMusic(context: Context) {
             next.start()
             true
         } catch (_: Exception) {
+            created?.let { if (player !== it) it.release() }
             stop()
             false
         }
