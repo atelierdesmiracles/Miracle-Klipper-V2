@@ -42,6 +42,7 @@ class MoonrakerPrintMonitor(
     }
 
     fun connect(baseUrl: String, apiKey: String? = null) {
+        toWebSocketUrl(baseUrl) // Validate before replacing an existing connection.
         disconnect()
         this.baseUrl = baseUrl
         this.apiKey = apiKey
