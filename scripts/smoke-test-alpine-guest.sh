@@ -40,7 +40,7 @@ try:
     with open(log_path, "w", buffering=1) as log:
         child = pexpect.spawn(command[0], command[1:], encoding="utf-8", timeout=75)
         child.logfile = log
-        child.expect(r"#\\s*$", timeout=75)
+        child.expect(r"#\s*$", timeout=75)
         child.setecho(False)
         child.sendline("mount -t devtmpfs devtmpfs /dev 2>/dev/null || true")
         child.sendline("modprobe virtio_console 2>/dev/null || true")
