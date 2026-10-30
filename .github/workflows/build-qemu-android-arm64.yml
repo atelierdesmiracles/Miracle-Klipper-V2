@@ -9,6 +9,7 @@ on:
       - '.github/workflows/build-qemu-android-arm64.yml'
       - 'v2/runtime/qemu/**'
       - 'scripts/verify-qemu-source.sh'
+      - 'scripts/prepare-qemu-headless-recipe.sh'
 
 permissions:
   contents: read
@@ -32,7 +33,11 @@ jobs:
           git -C termux-packages checkout "$TERMUX_PACKAGES_COMMIT"
           test "$(git -C termux-packages rev-parse HEAD)" = "$TERMUX_PACKAGES_COMMIT"
 
-      - name: Build QEMU AArch64 system package
+      - name: Prepare minimal headless QEMU recipe
+        run: |
+          bash scripts/prepare-qemu-headless-recipe.sh termux-packages/x11-packages/qemu-system-x86-64/build.sh
+
+      - name: Build headless QEMU AArch64 package
         working-directory: termux-packages
         run: |
           chmod +x scripts/run-docker.sh build-package.sh
@@ -61,7 +66,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: miracle-klipper-qemu-termux-arm64-packages
+          name: miracle-klipper-qemu-headless-arm64-packages
           path: qemu-output/*
           if-no-files-found: warn
           retention-days: 14
