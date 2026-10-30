@@ -10,6 +10,7 @@ bin/qemu-system-aarch64
 lib/                         # bibliothèques Bionic requises par QEMU
 boot/Image                   # noyau ARM64 compatible QEMU virt
 boot/initramfs               # initramfs Alpine ARM64
+disk/rootfs.qcow2            # disque racine ext4 persistant QCOW2
 ```
 
 Exemple de manifeste :
@@ -21,8 +22,10 @@ Exemple de manifeste :
   "qemuBinary": "bin/qemu-system-aarch64",
   "kernel": "boot/Image",
   "initrd": "boot/initramfs",
-  "diskSizeMb": 8192,
-  "memoryMb": 1024,
+  "diskImage": "disk/rootfs.qcow2",
+  "diskFormat": "qcow2",
+  "diskSizeMb": 3072,
+  "memoryMb": 1536,
   "cpuCount": 2,
   "kernelAppend": "console=ttyAMA0,115200 root=/dev/vda rootfstype=ext4 rootwait rw",
   "files": {
@@ -49,4 +52,4 @@ Toutes les entrées de fichiers exécutables ou images invitées doivent être l
 
 ## Limites à ne pas masquer
 
-Le pipeline de build produit une base Alpine ARM64 avec noyau virt, initramfs, disque ext4 QCOW2 et OpenRC. Le service Android transfère les ports Mainsail (8080) et Moonraker (7125) vers loopback et vérifie l’état de Moonraker/Klipper. Ces éléments doivent encore passer la CI puis un test sur téléphone ARM64 physique. Docker et l’accès MCU USB ne sont pas encore validés. Le bundle de production doit être construit avec QEMU Bionic relocatable, sa fermeture complète de bibliothèques, un noyau/initramfs Alpine testés et des licences tierces. Le test final reste un démarrage sur téléphone ARM64 physique.
+Le pipeline de build vise une base Alpine ARM64 avec noyau virt, initramfs, disque ext4 QCOW2 et OpenRC. Le service Android transfère les ports Mainsail (8080), Moonraker (7125) et le canal série virtio (8023) vers des sockets loopback. Le pont MCU USB est implémenté dans le code, mais l'ensemble doit encore passer la CI puis un test sur téléphone ARM64 physique. Docker reste optionnel et non validé. Le bundle de production doit être construit avec QEMU Bionic relocatable, sa fermeture complète de bibliothèques, un noyau/initramfs Alpine testés et des licences tierces. Le test final reste un démarrage sur téléphone ARM64 physique.
