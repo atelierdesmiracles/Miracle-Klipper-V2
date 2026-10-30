@@ -1,85 +1,89 @@
-# Miracle Klipper V2 — architecture
+# Miracle Klipper V2 — architecture and integration boundaries
 
-## 1. Scope and constraints
-V2 is a native Android ARM64 application that supervises an isolated Alpine Linux ARM64 virtual machine. Docker Engine runs in that guest. Android remains responsible for lifecycle, permissions, user experience, USB discovery, diagnostics, and safe access to local web services.
+## Target architecture
 
-The Android host is not a Linux server. Docker must not depend on Android exposing host cgroups, namespaces, OverlayFS, or privileged networking to an ordinary application process.
+```text
+Android app (arm64-v8a, non-root)
+  ├─ device diagnostics and runtime importer
+  ├─ foreground VM lifecycle service
+  ├─ QEMU process adapter + private QMP socket
+  ├─ persistent guest disk and log capture
+  ├─ local port-forward endpoints
+  └─ Mainsail WebView
+          │
+          │ QEMU TCG / ARM virt / VirtIO
+          ▼
+Alpine Linux ARM64 guest
+  ├─ linux-virt kernel + initramfs
+  ├─ ext4 root filesystem on persistent QCOW2
+  ├─ OpenRC + DHCP on virtio-net
+  ├─ Klipper + Moonraker (native Python processes)
+  └─ nginx + Mainsail static assets
+```
 
-## 2. Logical components
-    Android application (arm64-v8a, non-root)
-      - UI, onboarding and device capability report
-      - VM lifecycle coordinator
-      - QEMU process adapter and private QMP client
-      - guest readiness and health monitor
-      - Android USB Host manager
-      - local port-forward manager
-      - persistent VM disk and backup/restore
-      - embedded Mainsail WebView
-                |
-                | QEMU TCG (initial baseline)
-                v
-    Alpine Linux ARM64 guest (custom, pinned kernel)
-      - init, networking and persistent data mounts
-      - Docker Engine, containerd and runc
-      - Klipper container
-      - Moonraker container
-      - Mainsail static web container/service
-                |
-                - USB serial device passed through by QEMU
+## Android host responsibilities
 
-## 3. Android host responsibilities
-- Enforce ABI arm64-v8a for the first V2 release.
-- Check Android API level, available memory/storage and USB host support before installation.
-- Request USB permission only when a device is connected and the user chooses to attach it.
-- Keep QMP and management sockets in app-private storage with restrictive permissions.
-- Bind forwarded Moonraker and Mainsail services to loopback by default.
-- Use a foreground service with a persistent notification while the VM is running.
-- Stop safely on request and handle process death and low-storage conditions.
-- Never request Android root.
+- Restrict the first V2 build to `arm64-v8a`.
+- Check Android API, ABI, memory, storage and USB Host capability.
+- Import runtime ZIP files into app-private storage using staged extraction.
+- Reject path traversal, oversized archives, invalid manifests and SHA-256 mismatches.
+- Verify the QEMU executable is ELF64, little-endian AArch64 and matches its expected digest.
+- Run QEMU in an Android foreground service while the VM is active.
+- Keep QMP on an app-private Unix socket.
+- Forward guest Mainsail port 8080 and Moonraker port 7125 to Android loopback only.
+- Use a WebView network security policy that permits cleartext only for loopback.
+- Preserve the writable guest QCOW2 disk when the runtime bundle is upgraded.
+- Record QEMU process and guest serial logs in app-private storage.
 
-## 4. Guest requirements
-The guest kernel must be built and version-pinned for ARM64. Its configuration must be validated and tested. Investigate at minimum:
-- namespaces and required namespace types;
-- cgroup v1/v2 support and required controllers;
-- OverlayFS;
-- bridge, veth, netfilter and NAT support;
-- virtio block and network drivers;
-- USB host controller support for the selected virtual controller;
-- serial and console support;
-- seccomp support where required by the runtime.
+The SHA-256 manifest detects file corruption or a payload that does not match its manifest. A self-contained manifest does not authenticate who published the archive; runtime bundles must come from the project build pipeline until signed-manifest verification is implemented.
 
-Docker storage driver selection must be based on the actual guest filesystem and kernel test results. Do not declare overlay2 supported solely because the kernel config contains OverlayFS.
+## Alpine guest responsibilities
 
-## 5. Docker and services
-Docker Engine is installed and started inside Alpine. Pin the versions of Docker Engine, containerd, runc, Compose plugin, Alpine release, kernel revision, and downloaded artifacts.
+- Boot with the pinned Alpine ARM64 `linux-virt` kernel and generated initramfs.
+- Mount the persistent ext4 root filesystem from `/dev/vda`.
+- Bring up `eth0` using DHCP under QEMU user networking.
+- Use OpenRC for boot and service lifecycle.
+- Install Klipper and Moonraker at first boot using pinned source revisions and separate Python virtual environments.
+- Keep `printer.cfg`, G-code, logs and communication sockets under `/var/lib/miracle-klipper`.
+- Serve Mainsail through nginx and proxy Moonraker HTTP/WebSocket paths.
+- Keep a hardware-neutral printer configuration until the user supplies MCU, kinematics, motion and heater safety settings.
 
-Service containers require explicit image digests, documented persistent volumes, health checks, structured logs, restart policies, least-privilege capabilities and device mappings. Do not expose the Docker socket to Android network interfaces or the WebView.
+## Network contract
 
-Klipper receives only the required serial device. Moonraker is the API boundary. Mainsail is the web client and communicates with Moonraker through local forwarding.
+| Host endpoint | QEMU forwarding | Guest service |
+|---|---|---|
+| `127.0.0.1:8080` | TCP hostfwd | nginx/Mainsail on guest port 8080 |
+| `127.0.0.1:7125` | TCP hostfwd | Moonraker on guest port 7125 |
 
-## 6. USB design
-Android USB Host API remains the permission authority. The V2 USB manager must handle attach, detach, permission denial, device replacement, duplicate VID/PID devices, and reconnect.
+The QEMU hostfwd listener is bound to Android loopback. Do not change it to `0.0.0.0` without an explicit authentication and security review. Moonraker trusts the QEMU user-network source subnet and must not be exposed directly to an untrusted LAN.
 
-Preferred prototype: QEMU USB host passthrough with QMP hot-plug. The design must safely bridge the Android USB handle/file descriptor into QEMU; VID/PID alone is not a unique device identity. If this path proves unreliable, evaluate a dedicated serial bridge as a separately documented fallback.
+## Klipper and Moonraker lifecycle
 
-Acceptance requires physical tests with CDC ACM, CH340, CP210x, and FTDI adapters. USB passthrough is not complete from emulator-only tests.
+The guest OpenRC first-boot service installs the pinned stack if it is not already present, then starts nginx and Moonraker. Klipper starts only when `printer.cfg` contains the required hardware sections. The Android service polls Moonraker `/server/info` and reports whether Klipper is ready or disconnected; process creation alone is not a health check.
 
-## 7. Networking and security
-- QEMU guest networking starts with user-mode NAT.
-- QMP endpoints are private and never TCP-listening on all interfaces.
-- Moonraker and Mainsail are loopback-only by default.
-- LAN access is explicit, authenticated and reviewed.
-- No wildcard CORS or default credentials.
-- Validate paths used for disk images, logs, sockets, and extracted assets.
-- Verify checksums/signatures for downloaded build artifacts and container images.
+## USB and physical printer boundary
 
-## 8. Persistence and recovery
-Use an app-private, versioned virtual disk. Define first-boot initialization, atomic configuration updates, clean guest shutdown, backup/restore compatibility, disk-full handling, upgrade and rollback behavior, corruption detection and recovery instructions.
+Android USB Host remains the permission authority. USB passthrough is not yet integrated. The next implementation must choose and validate one of:
+- QEMU USB host passthrough with a supported virtual USB controller and Android file-descriptor/device access; or
+- a dedicated Android USB serial bridge to a guest-visible serial endpoint.
 
-Guest upgrades must not destroy Klipper configuration, macros, logs, or uploaded G-code.
+VID/PID alone is not a unique device identity. Acceptance requires real CDC ACM, CH340, CP210x and FTDI tests, including disconnect/reconnect and permission revocation.
 
-## 9. Performance constraints
-QEMU TCG may be substantially slower than native execution. Performance is a release gate. Measure boot time, idle CPU/RAM, Klipper scheduling latency, serial responsiveness, print-time stability, thermals, and battery drain on physical ARM64 phones. A successful boot alone does not prove suitability for printer control.
+## Docker and optional features
 
-## 10. Licensing and provenance
-Do not copy Podroid source files into Miracle Klipper without a formal compatibility review. Podroid is an architectural reference, not a code dependency. Maintain third-party notices/SBOM for QEMU, Alpine, Linux kernel, Docker components, and bundled libraries. Preserve each component's license and source-offer obligations.
+Docker is deferred. It may only be enabled after the guest kernel and filesystem pass tests for namespaces, cgroups, OverlayFS, veth/bridge, netfilter and storage-driver behavior. KlipperScreen, XServer-XSDL, camera/timelapse and multi-printer process supervision are not part of the validated base runtime yet.
+
+## Security and recovery
+
+- No Android root requirement.
+- No public QMP listener.
+- No public Moonraker listener by default.
+- Loopback-only host port forwards.
+- Strict archive extraction and checksum checks.
+- No credentials or API keys committed to source control.
+- Persistent guest disk must not be replaced during runtime updates.
+- Backup/restore, disk-full handling and interrupted-update recovery remain release gates.
+
+## Performance and release gates
+
+QEMU TCG may be slow on mobile devices. Measure boot time, CPU/RAM use, serial latency, print stability, thermals and battery drain on physical ARM64 phones. Release requires a real printer MCU connection, emergency-stop verification, thermal safety validation and a supervised test print.
