@@ -37,7 +37,6 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         completionMusic = PrintCompletionMusic(this)
-        UsbSerialBridge.initialize(applicationContext) { message -> runOnUiThread { if (::usbStatus.isInitialized) usbStatus.text = message } }
         printMonitor = MoonrakerPrintMonitor(
             onPrintCompleted = { filename ->
                 runOnUiThread {
@@ -91,6 +90,7 @@ class MainActivity : Activity() {
         })
         content.addView(label("CONNEXION USB — CARTE ÉLECTRONIQUE", 12, 0xFF536579.toInt(), true))
         usbStatus = label("Pont USB série prêt sur loopback. Scannez les périphériques OTG.", 14, 0xFF17283B.toInt(), false)
+        UsbSerialBridge.initialize(applicationContext) { message -> runOnUiThread { if (::usbStatus.isInitialized) usbStatus.text = message } }
         content.addView(usbStatus)
         usbDeviceSpinner = Spinner(this)
         content.addView(usbDeviceSpinner)
