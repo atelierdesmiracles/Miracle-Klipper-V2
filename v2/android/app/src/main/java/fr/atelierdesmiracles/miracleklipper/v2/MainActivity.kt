@@ -115,6 +115,11 @@ class MainActivity : Activity() {
                 runtimeStatus.text = "Demande d'arrêt envoyée."
             }
         })
+        content.addView(Button(this).apply {
+            text = "Ouvrir Mainsail"
+            setOnClickListener { startActivity(Intent(this@MainActivity, MainsailActivity::class.java)) }
+        })
+        content.addView(label("Interface Mainsail : http://127.0.0.1:8080", 13, 0xFF405168.toInt(), false))
         content.addView(label("CONNEXION MOONRAKER", 12, 0xFF536579.toInt(), true))
         moonrakerUrl = EditText(this).apply {
             hint = "http://adresse-imprimante:7125"
