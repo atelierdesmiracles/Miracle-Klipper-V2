@@ -38,6 +38,15 @@ class MainsailActivity : Activity() {
         }
         webView.webChromeClient = WebChromeClient()
         webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                val uri = request?.url ?: return true
+                val localHost = uri.host == "127.0.0.1" || uri.host == "localhost"
+                if (uri.scheme == "http" && localHost) return false
+                if (uri.scheme == "https") {
+                    startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, uri))
+                }
+                return true
+            }
             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                 status.text = "Chargement de Mainsail…"
                 status.visibility = View.VISIBLE
