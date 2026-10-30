@@ -1,0 +1,44 @@
+name: Build QEMU Android ARM64 package
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-qemu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Checkout Miracle Klipper V2
+        uses: actions/checkout@v4
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git docker.io
+      - name: Checkout pinned Termux package builder
+        env:
+          TERMUX_PACKAGES_COMMIT: 0e1306a2df4492ce5113fe220b65c4c4a4bf6e2d
+        run: |
+          git clone --filter=blob:none https://github.com/termux/termux-packages.git termux-packages
+          git -C termux-packages checkout "$TERMUX_PACKAGES_COMMIT"
+          test "$(git -C termux-packages rev-parse HEAD)" = "$TERMUX_PACKAGES_COMMIT"
+      - name: Build QEMU AArch64 system package
+        working-directory: termux-packages
+        run: |
+          chmod +x scripts/run-docker.sh build-package.sh
+          ./scripts/run-docker.sh ./build-package.sh -f -I qemu-system-x86-64
+      - name: Collect QEMU package outputs
+        run: |
+          mkdir -p qemu-output
+          find termux-packages/output -maxdepth 1 -type f \\( -name '*.deb' -o -name '*.tar.xz' \\) -print -exec cp {} qemu-output/ \\;
+          test -n "$(find qemu-output -type f -print -quit)"
+          sha256sum qemu-output/* > qemu-output/SHA256SUMS
+      - name: Upload QEMU package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: miracle-klipper-qemu-termux-arm64-packages
+          path: qemu-output/*
+          if-no-files-found: error
+          retention-days: 14
