@@ -180,7 +180,9 @@ LOGS="$DATA/logs"
 COMMS="$DATA/comms"
 mkdir -p "$LOGS" "$COMMS" "$DATA/state"
 
-# Regenerate the managed Moonraker config on every start; preserve user edits.\n/usr/local/bin/miracle-klipper-configure-moonraker\n
+# Regenerate the managed Moonraker config on every start; preserve user edits.
+/usr/local/bin/miracle-klipper-configure-moonraker
+
 if pgrep -f '[n]ginx: master process' >/dev/null 2>&1; then
   echo "Nginx already running"
 else
