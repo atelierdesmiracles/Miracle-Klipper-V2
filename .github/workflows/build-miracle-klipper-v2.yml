@@ -1,4 +1,4 @@
-name: Miracle Klipper V2 Android test build
+name: Miracle Klipper V2 Android build
 
 on:
   push:
@@ -12,8 +12,14 @@ on:
       - 'scripts/verify-qemu-source.sh'
       - '.github/workflows/build-miracle-klipper-v2.yml'
   pull_request:
+    branches:
+      - rewrite/miracle-klipper-v2
     paths:
       - 'v2/android/**'
+      - 'v2/runtime/qemu/**'
+      - 'v2/runtime/klipper/**'
+      - 'docs/v2/kiauh-adaptation.md'
+      - 'scripts/verify-qemu-source.sh'
       - '.github/workflows/build-miracle-klipper-v2.yml'
   workflow_dispatch:
 
@@ -22,44 +28,89 @@ permissions:
 
 jobs:
   build-test:
+    name: Test and build V2 (ARM64)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout V2 branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+
+      - name: Guard against legacy Android project
+        run: |
+          test -f v2/android/settings.gradle || test -f v2/android/settings.gradle.kts
+          test -f v2/android/app/build.gradle || test -f v2/android/app/build.gradle.kts
+          if grep -nE '(^|[[:space:]])(gradle|./gradlew)[[:space:]]+(-p[[:space:]]+)?app([[:space:]]|$)|projectDir.*app' .github/workflows/build-miracle-klipper-v2.yml; then
+            echo "Erreur: le workflow V2 ne doit jamais compiler le projet legacy app/."
+            exit 1
+          fi
+          grep -q 'fr.atelierdesmiracles.miracleklipper.v2' v2/android/app/build.gradle.kts
+          grep -q 'arm64-v8a' v2/android/app/build.gradle.kts
+
       - name: Verify pinned QEMU source archive
         run: bash scripts/verify-qemu-source.sh
+
       - name: Validate guest runtime scripts and lock files
         run: |
           sh -n v2/runtime/klipper/install-klipper-alpine.sh
           sh -n v2/runtime/klipper/miracle-klipper-manager.sh
           sh -n v2/runtime/klipper/miracle-klipper-instances.sh
           sh -n v2/runtime/klipper/miracle-klipper-firmware.sh
-          test -x v2/runtime/klipper/install-klipper-alpine.sh || chmod +x v2/runtime/klipper/install-klipper-alpine.sh
           grep -q 'KIAUH adaptation' docs/v2/kiauh-adaptation.md
           python3 -m json.tool v2/runtime/klipper/klipper.lock.json >/dev/null
           grep -q 'ee2c6fb6b00b2b5d097ef70d0868df7d74943b51' v2/runtime/klipper/install-klipper-alpine.sh
           grep -q 'b559b9a81161f958a43c2f527b6ad96f73310d5d' v2/runtime/klipper/install-klipper-alpine.sh
           grep -q 'v2.19.0' v2/runtime/klipper/install-klipper-alpine.sh
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
       - uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
+
       - name: Install Android SDK
         run: |
           sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
           yes | sdkmanager --licenses
+
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Unit tests
+
+      - name: Run V2 unit tests
         run: gradle -p v2/android testDebugUnitTest
-      - name: Build ARM64 debug APK
+
+      - name: Build V2 ARM64 debug APK
         run: gradle -p v2/android assembleDebug
-      - uses: actions/upload-artifact@v4
+
+      - name: Build V2 ARM64 release APK
+        run: gradle -p v2/android assembleRelease
+
+      - name: Verify generated APKs
+        run: |
+          test -n "$(find v2/android/app/build/outputs/apk/debug -maxdepth 1 -name '*.apk' -print -quit)"
+          test -n "$(find v2/android/app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
+          for apk in v2/android/app/build/outputs/apk/debug/*.apk v2/android/app/build/outputs/apk/release/*.apk; do
+            test -f "$apk"
+            echo "APK V2 généré: $apk"
+            aapt dump badging "$apk" | grep -F "package: name='fr.atelierdesmiracles.miracleklipper.v2'"
+          done
+
+      - name: Upload V2 debug APK
+        uses: actions/upload-artifact@v4
         with:
           name: miracle-klipper-v2-arm64-debug
           path: v2/android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
+
+      - name: Upload V2 release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: miracle-klipper-v2-arm64-release-unsigned
+          path: v2/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 30
