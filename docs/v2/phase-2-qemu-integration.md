@@ -106,6 +106,10 @@ Required product behavior:
 - Do not start music for cancelled, failed, or merely paused prints.
 - Keep this feature independent of QEMU's `--audio-drv-list` setting.
 
-This is an application feature requirement; it is not yet implemented or
-validated. The current QEMU package's audio-related shared libraries are not
-evidence that Android-native playback works.
+The Android-native player and Moonraker completion monitor are implemented in
+`PrintCompletionMusic.kt` and `MoonrakerPrintMonitor.kt`. The monitor arms only
+after observing a printing state and emits completion after a successful
+complete state; cancelled/error states disarm it. Track selection and enable
+state are stored in app preferences. The feature still requires end-to-end
+validation against a running Moonraker instance and a physical print. It is
+independent of QEMU's guest audio configuration.
