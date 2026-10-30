@@ -50,7 +50,7 @@ class MainActivity : Activity() {
         content.addView(label("MIRACLE KLIPPER", 13, 0xFF536579.toInt(), true))
         content.addView(label("Version 2 — banc de test", 27, 0xFF142338.toInt(), true))
         content.addView(label(
-            "Nouvelle base Android ARM64. Cette version valide l'application et le diagnostic de l'appareil. QEMU, Alpine et Docker ne sont pas encore intégrés.",
+            "Application Android ARM64 : import du runtime vérifié, gestion de la VM QEMU et connexion Moonraker. Alpine et les services invités doivent encore être validés sur appareil.",
             15, 0xFF405168.toInt(), false
         ))
         content.addView(label("MUSIQUE DE FIN D’IMPRESSION", 12, 0xFF536579.toInt(), true))
@@ -155,7 +155,7 @@ class MainActivity : Activity() {
             setOnClickListener { updateReport() }
         })
         content.addView(label(
-            "Prochain jalon : démarrage réel d'une VM Alpine ARM64 dans QEMU. Aucun service Klipper n'est lancé par cette version.",
+            "Le runtime doit être importé avant de démarrer la VM. Le statut de la VM ne certifie pas à lui seul que les services invités sont opérationnels.",
             13, 0xFF64748B.toInt(), false
         ))
         root.addView(ScrollView(this).apply { addView(content) },
@@ -241,7 +241,7 @@ class MainActivity : Activity() {
             appendLine("Stockage recommandé (4 Go) : " + if (readiness.storageRecommended) "OK" else "insuffisant")
             appendLine("Pré-requis VM : " + if (readiness.readyForVmPrototype) "de base OK" else "incomplets")
             appendLine()
-            appendLine("Runtime QEMU/Alpine : " + if (RuntimeBundleInstaller.isInstalled(this)) "importé et vérifié" else "non installé")
+            appendLine("Runtime QEMU/Alpine : " + if (RuntimeBundleInstaller.isInstalled(this@MainActivity)) "importé et vérifié" else "non installé")
             appendLine("VM QEMU : " + if (VmRuntimeService.running) "en cours" else "arrêtée")
             appendLine("Docker / Klipper / Moonraker / Mainsail dans la VM : à valider")
         }
