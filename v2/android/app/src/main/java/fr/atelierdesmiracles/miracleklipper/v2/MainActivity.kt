@@ -84,13 +84,13 @@ class MainActivity : Activity() {
         content.addView(label("CONNEXION MOONRAKER", 12, 0xFF536579.toInt(), true))
         moonrakerUrl = EditText(this).apply {
             hint = "http://adresse-imprimante:7125"
-            singleLine = true
+            isSingleLine = true
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_URI
         }
         content.addView(moonrakerUrl)
         moonrakerApiKey = EditText(this).apply {
             hint = "Clé API (facultative)"
-            singleLine = true
+            isSingleLine = true
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
         }
         content.addView(moonrakerApiKey)
