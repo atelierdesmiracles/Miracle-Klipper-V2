@@ -14,6 +14,7 @@ data class QemuGuestConfig(
     val qmpSocket: File,
     val serialLog: File,
     val processLog: File = File(serialLog.parentFile, "qemu-process.log"),
+    val expectedQemuSha256: String? = null,
     val memoryMb: Int = 1024,
     val cpuCount: Int = 2,
     val append: String = "console=ttyAMA0,115200 earlycon=pl011,0x09000000 rdinit=/init"
