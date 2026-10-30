@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    <application android:allowBackup="false" android:label="Miracle Klipper V2"
+    <application android:allowBackup="false" android:usesCleartextTraffic="true" android:label="Miracle Klipper V2"
         android:supportsRtl="true" android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
@@ -12,6 +12,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".MainsailActivity" android:exported="false" />
         <service
             android:name=".VmRuntimeService"
             android:exported="false"
