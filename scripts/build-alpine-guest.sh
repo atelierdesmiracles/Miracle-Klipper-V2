@@ -94,7 +94,7 @@ while [ "$attempt" -lt 60 ]; do
   attempt=$((attempt + 1))
   sleep 2
 done
-if [ "$attempt" -ge 60 ]; then echo "DHCP/DNS did not become ready before first boot install" >&2; fi
+if [ "$attempt" -ge 60 ]; then echo "DHCP/DNS did not become ready before first boot install" >&2; exit 1; fi
 if [ ! -x /usr/local/bin/miracle-klipper-start ] || [ ! -x /opt/miracle-klipper/venvs/moonraker/bin/python ]; then
   /bin/sh "$INSTALLER"
 fi
