@@ -21,7 +21,7 @@ mkdir -p "$BASE" "$VENV" "$CONFIG" "$LOGS" "$DATA/gcodes" "$COMMS" "$DATA/state"
 exec >>"$LOGS/install-stack.log" 2>&1
 
 echo "[Miracle Klipper] Installing Alpine dependencies"
-apk add --no-cache ca-certificates curl git nginx python3 py3-pip py3-virtualenv unzip procps \
+apk add --no-cache ca-certificates curl git nginx openrc python3 py3-pip py3-virtualenv unzip procps \
   build-base linux-headers musl-dev libffi-dev openssl-dev jpeg-dev zlib-dev
 
 fetch_pinned() {
@@ -254,3 +254,25 @@ echo "Start with: miracle-klipper-start"
 
 # KIAUH-inspired operational manager
 install -m 0755 "$(dirname "$0")/miracle-klipper-manager.sh" /usr/local/bin/miracle-klipper-manager
+
+cat > /etc/init.d/miracle-klipper <<'EOF'
+#!/sbin/openrc-run
+description="Miracle Klipper printer stack"
+depend() {
+  need networking
+}
+start() {
+  ebegin "Starting Miracle Klipper services"
+  /usr/local/bin/miracle-klipper-start
+  eend $?
+}
+stop() {
+  ebegin "Stopping Miracle Klipper services"
+  /usr/local/bin/miracle-klipper-stop
+  eend $?
+}
+EOF
+chmod 0755 /etc/init.d/miracle-klipper
+if command -v rc-update >/dev/null 2>&1; then
+  rc-update add miracle-klipper default || true
+fi
