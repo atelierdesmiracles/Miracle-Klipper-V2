@@ -96,9 +96,17 @@ while [ "$attempt" -lt 60 ]; do
 done
 if [ "$attempt" -ge 60 ]; then echo "DHCP/DNS did not become ready before first boot install" >&2; exit 1; fi
 if [ ! -x /usr/local/bin/miracle-klipper-start ] || [ ! -x /opt/miracle-klipper/venvs/moonraker/bin/python ]; then
-  /bin/sh "$INSTALLER"
+  if ! /bin/sh "$INSTALLER"; then
+    echo "Miracle Klipper firstboot installation failed; installer log follows:" >&2
+    tail -n 160 /var/lib/miracle-klipper/logs/install-stack.log >&2 2>/dev/null || true
+    exit 1
+  fi
 fi
-exec /usr/local/bin/miracle-klipper-start
+if ! /usr/local/bin/miracle-klipper-start; then
+  echo "Miracle Klipper service startup failed; logs follow:" >&2
+  tail -n 120 /var/lib/miracle-klipper/logs/*.log >&2 2>/dev/null || true
+  exit 1
+fi
 EOF
 chmod 0755 "$ROOT/usr/local/sbin/miracle-klipper-firstboot"
 cat > "$ROOT/etc/init.d/miracle-klipper" <<'EOF'
