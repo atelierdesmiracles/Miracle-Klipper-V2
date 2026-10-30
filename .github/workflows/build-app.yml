@@ -2,11 +2,13 @@ name: Android CI
 
 on:
   push:
-    branches:
-      - "**"
+    branches-ignore:
+      - "rewrite/miracle-klipper-v2"
     tags:
       - "v*"
   pull_request:
+    branches-ignore:
+      - "rewrite/miracle-klipper-v2"
 
 permissions:
   contents: read
