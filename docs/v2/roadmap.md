@@ -82,7 +82,6 @@ Gate:
 
 ## Phase 4 — USB serial and physical printer
 
-Not yet complete:
 Implemented in code, pending validation:
 - Android USB Host permission and detach handling.
 - USB serial drivers for CDC/ACM, CH340, CP210x and FTDI via usb-serial-for-android.
@@ -135,7 +134,7 @@ Do not call these operational until tested:
 - Alpine boot and persistent disk operation.
 - Klipper/Moonraker/Mainsail end-to-end operation.
 - Docker inside the guest.
-- USB passthrough or serial bridging.
+- USB serial bridge operation on physical hardware.
 - Klipper controlling a real printer or completing a print.
 
 ## Build references
