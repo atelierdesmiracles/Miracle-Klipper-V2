@@ -59,3 +59,36 @@ Do not copy Termux runtime libraries into an APK without reviewing their license
 3. Produce an APK-native bundle with ELF dependency and license audits.
 4. Run `qemu-system-aarch64 --version` and a no-guest smoke test on a physical ARM64 phone.
 5. Only then integrate the Alpine ARM64 kernel, initramfs, and root filesystem.
+
+
+## First Android/Bionic build audit — 30 October 2026
+
+The first complete Termux package build is available from GitHub Actions run
+`41059856120`, artifact ID `12978184863`. The AArch64 package was extracted and
+its executable inspected with ELF tooling.
+
+Observed executable:
+- `qemu-system-aarch64`, ELF64 little-endian AArch64.
+- Interpreter: `/system/bin/linker64`.
+- Android API level: 24.
+- Built by NDK r30.
+- Approximate executable size: 31 MiB.
+- RUNPATH: `/data/data/com.termux/files/usr/lib`.
+
+The binary's direct DT_NEEDED list includes GTK/GDK, SDL2, X11, SPICE,
+virglrenderer, PulseAudio, JACK, libusb, libslirp, GLib/GObject/GIO, pixman,
+GNUTLS, nettle and other libraries. The package metadata also declares a broad
+desktop-oriented dependency set. This is not an acceptable app-private runtime
+bundle as-is: the Termux absolute RUNPATH is not Miracle Klipper's private
+library directory, and the transitive dependency closure has not been collected.
+
+The next build must use a dedicated headless recipe, not merely rename or
+repackage this desktop-enabled executable. The build should explicitly disable
+GTK, SDL, OpenGL/virgl, VNC, SPICE, audio, USB redirection, libusb, virtfs,
+curl, libnfs and libssh; retain only the features required for TCG AArch64
+system emulation, ARM virt, serial, raw VirtIO block, user-mode networking
+(SLIRP), and QMP. The resulting executable must be inspected again and its
+DT_NEEDED closure resolved before APK integration.
+
+The successful CI build proves compile-time Android/Bionic compatibility only.
+It does not prove that this binary can execute in Miracle Klipper's app sandbox.
