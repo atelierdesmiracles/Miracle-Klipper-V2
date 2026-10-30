@@ -5,7 +5,7 @@
 ```text
 Printer MCU / USB adapter
   → Android USB Host API + usb-serial-for-android
-  → loopback TCP listener 127.0.0.1:8023 (Android app process)
+  → loopback TCP listener 127.0.0.1:<port éphémère> (Android app process)
   → QEMU socket chardev
   → virtio-serial device / org.miracle.usbserial
   → Alpine /dev/virtio-ports/org.miracle.usbserial
@@ -13,7 +13,7 @@ Printer MCU / USB adapter
   → Klipper [mcu] serial
 ```
 
-This is a byte-stream serial bridge. It is not raw USB passthrough and does not expose the USB device or bridge port to the LAN. QEMU connects to an Android loopback listener; Alpine sees a virtio serial port.
+This is a byte-stream serial bridge. It is not raw USB passthrough and does not expose the USB device or bridge port to the LAN. QEMU connects to an Android loopback listener on a randomly assigned ephemeral port; Alpine sees a virtio serial port.
 
 ## Android setup
 
