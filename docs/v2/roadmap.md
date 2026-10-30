@@ -83,11 +83,16 @@ Gate:
 ## Phase 4 — USB serial and physical printer
 
 Not yet complete:
-- Android USB Host permission/attach/detach manager.
-- Driver support for CDC ACM, CH340, CP210x and FTDI.
-- QEMU USB passthrough or a reviewed Android USB-to-guest serial bridge.
-- Stable device identity and reconnect handling.
-- Klipper MCU path management.
+Implemented in code, pending validation:
+- Android USB Host permission and detach handling.
+- USB serial drivers for CDC/ACM, CH340, CP210x and FTDI via usb-serial-for-android.
+- Loopback TCP bridge on Android, QEMU virtio-serial channel, Alpine socat PTY at /dev/ttyUSB0.
+- Device selection and configurable baud rate in the Android UI.
+
+Still required:
+- Compile and test the driver dependency on the V2 build.
+- Physical OTG tests, duplicate VID/PID devices, disconnect/reconnect and permission revocation.
+- Klipper MCU configuration and sustained serial test.
 
 Gate:
 - Sustained MCU serial communication on real hardware.
