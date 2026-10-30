@@ -93,7 +93,7 @@ object RuntimeBundleInstaller {
         val root = runtimeDirectory(context)
         return try {
             val manifest = RuntimeBundleManifest.parse(File(root, "manifest.json"))
-            manifest.sha256.keys.all { path -> File(root, path).isFile && File(root, path).length() > 0L } &&
+            manifest.sha256.keys.all { path -> File(root, path).isFile } &&
                 File(root, manifest.qemuBinary).canExecute()
         } catch (_: Exception) {
             false
