@@ -99,14 +99,15 @@ class QemuCommandBuilderTest {
             diskImage = disk,
             qmpSocket = File(root, "qmp.sock"),
             serialLog = File(root, "serial.log"),
-            diskFormat = "qcow2"
+            diskFormat = "qcow2",
+            usbSerialPort = 34567
         ))
         assertTrue(result is QemuPreflightResult.Ready)
         val command = (result as QemuPreflightResult.Ready).command
         assertTrue(command.any { it.contains("format=qcow2,file=") })
         assertTrue(command.any { it.contains("hostfwd=tcp:127.0.0.1:8080-:8080") })
         assertTrue(command.any { it.contains("hostfwd=tcp:127.0.0.1:7125-:7125") })
-        assertTrue(command.any { it.contains("port=8023,server=off,reconnect=5") })
+        assertTrue(command.any { it.contains("port=34567,server=off,reconnect=5") })
         assertTrue(command.any { it.contains("virtserialport,bus=virtio-serial0.0") })
     }
 
