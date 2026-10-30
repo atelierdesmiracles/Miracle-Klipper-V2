@@ -45,3 +45,29 @@ gradle -p v2/android assembleDebug
 ```
 
 Acceptance remains a successful Alpine readiness handshake on a physical ARM64 Android phone, persistence across app restart, and clean shutdown without filesystem corruption.
+
+
+## Headless QEMU build and package audit — 30 October 2026
+
+A first headless-configured package was produced by GitHub Actions run
+[41064142163](https://github.com/atelierdesmiracles/Miracle-Klipper-V2/actions/runs/41064142163),
+commit `1b9219b8e20e522968fd1fc0384a19b4f4e92fa8`. The AArch64 Debian package
+is about 3.85 MB and its executable is about 3.1 MB.
+
+Post-build inspection found that this build is **not yet acceptable for APK
+integration**:
+
+- ELF RUNPATH still points to
+  `/data/data/com.termux/files/usr/lib`, not Miracle Klipper's private library
+  directory.
+- Direct dependencies still include `libasound.so`, `libpulse.so` and
+  `libjack.so.0`, despite the intended headless configuration.
+- The package metadata lists only a small subset of the executable's direct
+  shared-library requirements; the full dependency closure has not been
+  packaged or verified.
+- No execution test has been performed on a physical Android phone.
+
+The new `scripts/audit-qemu-android-package.sh` is wired into the QEMU
+workflow. It rejects a Termux absolute RUNPATH and common desktop/audio
+dependencies. This is a packaging gate, not a runtime test. The next build
+must pass this audit before APK bundling work proceeds.
