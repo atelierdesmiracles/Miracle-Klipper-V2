@@ -31,7 +31,7 @@ if ! "$READELF" -h "$BIN" | grep -Eq 'Machine:.*AArch64'; then
   echo "ERROR: executable is not AArch64" >&2
   FAIL=1
 fi
-if "$READELF" -d "$BIN" | grep -Eq 'Library (runpath|rpath): \\[/data/data/com\\.termux/'; then
+if "$READELF" -d "$BIN" | grep -Eq 'Library (runpath|rpath): \[/data/data/com\.termux/'; then
   echo "INFO: raw Termux build-prefix RUNPATH will be replaced by the runtime assembler."
 fi
 if "$READELF" -d "$BIN" | grep -Eq 'Shared library: \[(libasound|libpulse|libjack|libSDL|libgtk|libX11|libspice|libvirgl)'; then
