@@ -205,7 +205,10 @@ cors_domains:
 
 [file_manager]
 enable_object_processing: True
-config_path: $CONFIG
+
+[machine]
+provider: none
+shutdown_action: poweroff
 
 [history]
 
@@ -247,7 +250,7 @@ if pgrep -f '[m]oonraker/moonraker.py' >/dev/null 2>&1; then
 else
   nohup /opt/miracle-klipper/venvs/moonraker/bin/python \
     /opt/miracle-klipper/moonraker/moonraker/moonraker.py \
-    -c "$CONFIG/moonraker.conf" \
+    -c "$CONFIG/moonraker.conf" -d "$DATA" \
     >>"$LOGS/moonraker-process.log" 2>&1 &
   echo "$!" > "$DATA/state/moonraker.pid"
 fi
