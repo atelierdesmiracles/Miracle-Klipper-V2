@@ -1,80 +1,218 @@
 #!/bin/sh
-# Install Klipper only in the Alpine ARM64 guest. Moonraker/Mainsail are excluded.
+# Miracle Klipper V2 - complete printer stack for Alpine Linux ARM64.
+# Installs Klipper, Moonraker, Mainsail and nginx directly in the guest.
+# Docker is intentionally not a dependency until the guest kernel passes its tests.
 set -eu
-KLIPPER_REPO="https://github.com/Klipper3d/klipper.git"
-KLIPPER_REV="\${KLIPPER_REV:-ee2c6fb6b00b2b5d097ef70d0868df7d74943b51}"
+
+KLIPPER_REV="ee2c6fb6b00b2b5d097ef70d0868df7d74943b51"
+MOONRAKER_REV="b559b9a81161f958a43c2f527b6ad96f73310d5d"
+MAINSAIL_VERSION="v2.19.0"
+MAINSAIL_SHA256="c4d9d96f89851c6ae0709c2f20725447f3fe8c57cf193869b0083441bd93378a"
+
 BASE="/opt/miracle-klipper"
 DATA="/var/lib/miracle-klipper"
-SOURCE="$BASE/klipper"
-STAGING="$BASE/klipper-staging"
-VENV="$BASE/venvs/klipper"
-LOG="$DATA/logs/install-klipper.log"
+VENV="$BASE/venvs"
+CONFIG="$DATA/config"
+LOGS="$DATA/logs"
+COMMS="$DATA/comms"
+WEBROOT="/var/www/mainsail"
 
-case "$KLIPPER_REV" in *[!0-9a-fA-F]*|'') echo "Invalid Klipper commit SHA" >&2; exit 2 ;; esac
-[ "\${#KLIPPER_REV}" -eq 40 ] || { echo "Klipper revision must be a full 40-character SHA" >&2; exit 2; }
+mkdir -p "$BASE" "$VENV" "$CONFIG" "$LOGS" "$DATA/gcodes" "$COMMS" "$DATA/state"
+exec >>"$LOGS/install-stack.log" 2>&1
 
-mkdir -p "$BASE" "$BASE/venvs" "$DATA/config" "$DATA/logs" "$DATA/gcodes" "$DATA/comms" "$DATA/state"
-exec >>"$LOG" 2>&1
+echo "[Miracle Klipper] Installing Alpine dependencies"
+apk add --no-cache ca-certificates curl git nginx python3 py3-pip py3-virtualenv \
+  build-base linux-headers musl-dev libffi-dev openssl-dev jpeg-dev zlib-dev
 
-echo "[Miracle Klipper] Installing Alpine host dependencies"
-apk add --no-cache ca-certificates git python3 py3-pip build-base linux-headers musl-dev libffi-dev openssl-dev
+fetch_pinned() {
+  repo="$1"
+  destination="$2"
+  revision="$3"
+  staging="$destination.staging"
+  rm -rf "$staging"
+  mkdir -p "$staging"
+  git -C "$staging" init -q
+  git -C "$staging" remote add origin "$repo"
+  git -C "$staging" fetch --depth=1 origin "$revision"
+  git -C "$staging" checkout --detach FETCH_HEAD
+  actual="$(git -C "$staging" rev-parse HEAD)"
+  if [ "$actual" != "$revision" ]; then
+    echo "Pinned revision mismatch for $repo: expected $revision, got $actual" >&2
+    exit 1
+  fi
+  rm -rf "$destination"
+  mv "$staging" "$destination"
+}
 
-if [ -f "$DATA/state/klipper-revision" ] &&
-   [ "$(cat "$DATA/state/klipper-revision")" = "$KLIPPER_REV" ] &&
-   [ -f "$SOURCE/klippy/klippy.py" ] && [ -x "$VENV/bin/python" ]; then
-  echo "[Miracle Klipper] Requested revision already installed"
-else
-  rm -rf "$STAGING"
-  mkdir -p "$STAGING"
-  git -C "$STAGING" init -q
-  git -C "$STAGING" remote add origin "$KLIPPER_REPO"
-  git -C "$STAGING" fetch --depth=1 origin "$KLIPPER_REV"
-  git -C "$STAGING" checkout --detach FETCH_HEAD
-  ACTUAL="$(git -C "$STAGING" rev-parse HEAD)"
-  [ "$ACTUAL" = "$KLIPPER_REV" ] || { echo "Klipper revision mismatch" >&2; exit 1; }
+install_python_component() {
+  component="$1"
+  source_dir="$2"
+  requirements="$3"
+  environment="$VENV/$component"
+  python3 -m venv "$environment"
+  "$environment/bin/python" -m pip install --disable-pip-version-check --no-input \
+    -r "$source_dir/$requirements"
+  "$environment/bin/python" -m pip check
+}
 
-  rm -rf "$VENV"
-  python3 -m venv "$VENV"
-  "$VENV/bin/python" -m pip install --disable-pip-version-check --no-input -r "$STAGING/scripts/klippy-requirements.txt"
-  "$VENV/bin/python" -m pip check
-  "$VENV/bin/python" -m compileall -q "$STAGING/klippy"
-  "$VENV/bin/python" "$STAGING/klippy/klippy.py" --help >/dev/null
-
-  rm -rf "$SOURCE"
-  mv "$STAGING" "$SOURCE"
+echo "[Miracle Klipper] Fetching pinned Klipper source"
+if [ ! -f "$BASE/klipper/klippy/klippy.py" ] || \
+   [ ! -f "$DATA/state/klipper-revision" ] || \
+   [ "$(cat "$DATA/state/klipper-revision")" != "$KLIPPER_REV" ]; then
+  fetch_pinned "https://github.com/Klipper3d/klipper.git" "$BASE/klipper" "$KLIPPER_REV"
+  rm -rf "$VENV/klipper"
+  install_python_component "klipper" "$BASE/klipper" "scripts/klippy-requirements.txt"
+  "$VENV/klipper/bin/python" -m compileall -q "$BASE/klipper/klippy"
+  "$VENV/klipper/bin/python" "$BASE/klipper/klippy/klippy.py" --help >/dev/null
   printf '%s\n' "$KLIPPER_REV" > "$DATA/state/klipper-revision.tmp"
   mv "$DATA/state/klipper-revision.tmp" "$DATA/state/klipper-revision"
 fi
 
-if [ ! -f "$DATA/config/printer.cfg" ]; then
-  cat > "$DATA/config/printer.cfg" <<'EOF'
-# Miracle Klipper - neutral printer configuration template.
-# Configure the correct MCU serial path, kinematics, steppers, heaters,
-# thermistors, motion limits and safety settings for YOUR printer.
-# Do not start Klipper until valid [mcu] and [printer] sections exist.
+echo "[Miracle Klipper] Fetching pinned Moonraker source"
+if [ ! -f "$BASE/moonraker/moonraker/moonraker.py" ] || \
+   [ ! -f "$DATA/state/moonraker-revision" ] || \
+   [ "$(cat "$DATA/state/moonraker-revision")" != "$MOONRAKER_REV" ]; then
+  fetch_pinned "https://github.com/Arksine/moonraker.git" "$BASE/moonraker" "$MOONRAKER_REV"
+  rm -rf "$VENV/moonraker"
+  install_python_component "moonraker" "$BASE/moonraker" "scripts/moonraker-requirements.txt"
+  "$VENV/moonraker/bin/python" -m compileall -q "$BASE/moonraker/moonraker"
+  "$VENV/moonraker/bin/python" "$BASE/moonraker/moonraker/moonraker.py" --help >/dev/null
+  printf '%s\n' "$MOONRAKER_REV" > "$DATA/state/moonraker-revision.tmp"
+  mv "$DATA/state/moonraker-revision.tmp" "$DATA/state/moonraker-revision"
+fi
+
+echo "[Miracle Klipper] Downloading and verifying Mainsail"
+mkdir -p "$WEBROOT"
+tmp_zip="/tmp/mainsail-release.zip"
+curl --fail --location --retry 3 --connect-timeout 20 \
+  "https://github.com/mainsail-crew/mainsail/releases/download/$MAINSAIL_VERSION/mainsail.zip" \
+  -o "$tmp_zip"
+echo "$MAINSAIL_SHA256  $tmp_zip" | sha256sum -c -
+rm -rf /tmp/mainsail-unpack
+mkdir -p /tmp/mainsail-unpack
+unzip -q "$tmp_zip" -d /tmp/mainsail-unpack
+if [ -f /tmp/mainsail-unpack/index.html ]; then
+  rm -rf "$WEBROOT"/*
+  cp -a /tmp/mainsail-unpack/. "$WEBROOT/"
+elif [ -f /tmp/mainsail-unpack/mainsail/index.html ]; then
+  rm -rf "$WEBROOT"/*
+  cp -a /tmp/mainsail-unpack/mainsail/. "$WEBROOT/"
+else
+  echo "Mainsail archive layout is not recognized" >&2
+  exit 1
+fi
+rm -rf "$tmp_zip" /tmp/mainsail-unpack
+
+if [ ! -f "$CONFIG/printer.cfg" ]; then
+  cat > "$CONFIG/printer.cfg" <<'EOF'
+# Miracle Klipper - neutral printer configuration.
+# Add the correct [mcu] serial path and printer-specific [printer],
+# stepper, heater, thermistor and safety sections before starting Klipper.
 EOF
 fi
+
+if [ ! -f "$CONFIG/moonraker.conf" ]; then
+  cat > "$CONFIG/moonraker.conf" <<EOF
+[server]
+host: 127.0.0.1
+port: 7125
+klippy_uds_address: $COMMS/klippy.sock
+max_upload_size: 1024
+
+[authorization]
+trusted_clients:
+  127.0.0.0/8
+  ::1/128
+cors_domains:
+  localhost
+  127.0.0.1
+
+[file_manager]
+enable_object_processing: True
+config_path: $CONFIG
+
+[history]
+
+[announcements]
+subscriptions:
+  mainsail
+
+[update_manager]
+enable_auto_refresh: False
+EOF
+fi
+
+mkdir -p /etc/nginx/http.d
+cat > /etc/nginx/http.d/miracle-klipper.conf <<EOF
+server {
+    listen 127.0.0.1:8080;
+    server_name localhost;
+    root $WEBROOT;
+    index index.html;
+    client_max_body_size 1024m;
+
+    location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+
+    location /websocket {
+        proxy_pass http://127.0.0.1:7125/websocket;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$http_host;
+        proxy_read_timeout 3600s;
+    }
+
+    location ~ ^/(printer|api|access|machine|server|debug|announcements|webhooks|register_remote_method) {
+        proxy_pass http://127.0.0.1:7125\$request_uri;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    }
+}
+EOF
+nginx -t
 
 cat > /usr/local/bin/miracle-klipper-start <<'EOF'
 #!/bin/sh
 set -eu
-DATA="/var/lib/miracle-klipper"
 BASE="/opt/miracle-klipper"
-CFG="$DATA/config/printer.cfg"
-SOCKET="$DATA/comms/klippy.sock"
-[ -x "$BASE/venvs/klipper/bin/python" ] || { echo "Klipper venv missing" >&2; exit 1; }
-[ -f "$BASE/klipper/klippy/klippy.py" ] || { echo "Klipper source missing" >&2; exit 1; }
-[ -f "$CFG" ] || { echo "printer.cfg missing" >&2; exit 1; }
-grep -Eq '^[[:space:]]*\[mcu\][[:space:]]*$' "$CFG" || { echo "printer.cfg needs [mcu]" >&2; exit 1; }
-grep -Eq '^[[:space:]]*\[printer\][[:space:]]*$' "$CFG" || { echo "printer.cfg needs [printer]" >&2; exit 1; }
-if pgrep -f '[k]lippy/klippy.py' >/dev/null 2>&1; then echo "Klipper already running"; exit 0; fi
-mkdir -p "$DATA/logs" "$DATA/comms" "$DATA/state"
-rm -f "$SOCKET"
-nohup "$BASE/venvs/klipper/bin/python" "$BASE/klipper/klippy/klippy.py" \
-  "$CFG" -l "$DATA/logs/klippy.log" -a "$SOCKET" \
-  >>"$DATA/logs/klipper-process.log" 2>&1 &
-echo "$!" > "$DATA/state/klipper.pid"
-echo "Klipper launch requested; check logs and socket for readiness."
+DATA="/var/lib/miracle-klipper"
+CONFIG="$DATA/config"
+LOGS="$DATA/logs"
+COMMS="$DATA/comms"
+mkdir -p "$LOGS" "$COMMS" "$DATA/state"
+
+if pgrep -f '[n]ginx: master process' >/dev/null 2>&1; then
+  echo "Nginx already running"
+else
+  nginx
+fi
+
+if pgrep -f '[m]oonraker/moonraker.py' >/dev/null 2>&1; then
+  echo "Moonraker already running"
+else
+  nohup /opt/miracle-klipper/venvs/moonraker/bin/python     /opt/miracle-klipper/moonraker/moonraker/moonraker.py     -c "$CONFIG/moonraker.conf"     >>"$LOGS/moonraker-process.log" 2>&1 &
+  echo "$!" > "$DATA/state/moonraker.pid"
+fi
+
+if grep -Eq '^[[:space:]]*\[mcu\][[:space:]]*$' "$CONFIG/printer.cfg" &&
+   grep -Eq '^[[:space:]]*\[printer\][[:space:]]*$' "$CONFIG/printer.cfg"; then
+  if pgrep -f '[k]lippy/klippy.py' >/dev/null 2>&1; then
+    echo "Klipper already running"
+  else
+    rm -f "$COMMS/klippy.sock"
+    nohup /opt/miracle-klipper/venvs/klipper/bin/python       /opt/miracle-klipper/klipper/klippy/klippy.py       "$CONFIG/printer.cfg" -l "$LOGS/klippy.log" -a "$COMMS/klippy.sock"       >>"$LOGS/klipper-process.log" 2>&1 &
+    echo "$!" > "$DATA/state/klipper.pid"
+  fi
+else
+  echo "Klipper is installed but not started: configure [mcu] and [printer] in $CONFIG/printer.cfg"
+fi
+
+echo "Mainsail: http://127.0.0.1:8080/"
+echo "Moonraker: http://127.0.0.1:7125/"
 EOF
 chmod +x /usr/local/bin/miracle-klipper-start
 
@@ -82,21 +220,31 @@ cat > /usr/local/bin/miracle-klipper-stop <<'EOF'
 #!/bin/sh
 set -u
 DATA="/var/lib/miracle-klipper"
-if [ -f "$DATA/state/klipper.pid" ]; then
-  PID="$(cat "$DATA/state/klipper.pid")"
-  case "$PID" in *[!0-9]*|'') ;; *) kill "$PID" 2>/dev/null || true ;; esac
-  rm -f "$DATA/state/klipper.pid"
-fi
-echo "Klipper stop requested"
+for service in klipper moonraker; do
+  pidfile="$DATA/state/$service.pid"
+  if [ -f "$pidfile" ]; then
+    pid="$(cat "$pidfile")"
+    case "$pid" in *[!0-9]*|'') ;; *) kill "$pid" 2>/dev/null || true ;; esac
+    rm -f "$pidfile"
+  fi
+done
+nginx -s quit 2>/dev/null || true
+echo "Miracle Klipper services stop requested"
 EOF
 chmod +x /usr/local/bin/miracle-klipper-stop
 
 cat > /usr/local/bin/miracle-klipper-status <<'EOF'
 #!/bin/sh
-if pgrep -f '[k]lippy/klippy.py' >/dev/null 2>&1; then echo "Klipper: process running"; else echo "Klipper: stopped"; fi
-if [ -S /var/lib/miracle-klipper/comms/klippy.sock ]; then echo "Klipper API socket: present"; else echo "Klipper API socket: not ready"; fi
+set +e
+pgrep -f '[k]lippy/klippy.py' >/dev/null 2>&1 && echo "Klipper: running" || echo "Klipper: stopped"
+pgrep -f '[m]oonraker/moonraker.py' >/dev/null 2>&1 && echo "Moonraker: running" || echo "Moonraker: stopped"
+pgrep -f '[n]ginx: master process' >/dev/null 2>&1 && echo "Mainsail/Nginx: running" || echo "Mainsail/Nginx: stopped"
+[ -S /var/lib/miracle-klipper/comms/klippy.sock ] && echo "Klipper API socket: ready" || echo "Klipper API socket: not ready"
 EOF
 chmod +x /usr/local/bin/miracle-klipper-status
 
-echo "[Miracle Klipper] Klipper-only installation completed at revision $KLIPPER_REV"
-echo "Moonraker and Mainsail have not been installed."
+echo "[Miracle Klipper] Stack installation complete."
+echo "Pinned Klipper: $KLIPPER_REV"
+echo "Pinned Moonraker: $MOONRAKER_REV"
+echo "Pinned Mainsail: $MAINSAIL_VERSION"
+echo "Start with: miracle-klipper-start"
