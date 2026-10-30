@@ -128,7 +128,9 @@ cors_domains:
   localhost
   127.0.0.1
   http://127.0.0.1
+  http://127.0.0.1:8080
   http://localhost
+  http://localhost:8080
 
 [file_manager]
 enable_object_processing: True
