@@ -111,6 +111,9 @@ chroot "$ROOT" /sbin/mkinitfs -o /boot/initramfs-miracle "$KVER"
 INITRD="$ROOT/boot/initramfs-miracle"
 [ -s "$INITRD" ] || { echo "mkinitfs did not produce an initramfs" >&2; exit 1; }
 rm -f "$ROOT/usr/bin/qemu-aarch64-static"
+for mountpoint in "$ROOT/dev" "$ROOT/proc" "$ROOT/sys"; do
+  if mountpoint -q "$mountpoint"; then umount -lf "$mountpoint"; fi
+done
 mkdir -p "$OUT/boot" "$OUT/disk"
 cp "$KERNEL" "$OUT/boot/Image"
 cp "$INITRD" "$OUT/boot/initramfs"
