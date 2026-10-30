@@ -9,6 +9,7 @@ import java.io.IOException
  */
 class QemuProcessController {
     @Volatile private var process: Process? = null
+    @Volatile private var qmpSocket: File? = null
 
     @Synchronized
     fun start(config: QemuGuestConfig, workingDirectory: File): QemuStartResult {
@@ -41,6 +42,7 @@ class QemuProcessController {
                         }
                     }
                     process = builder.start()
+                    qmpSocket = config.qmpSocket
                     QemuStartResult.Started(process!!)
                 } catch (error: IOException) {
                     QemuStartResult.Failed(error.message ?: "Échec du lancement de QEMU.")
@@ -51,23 +53,65 @@ class QemuProcessController {
         }
     }
 
+    /**
+     * Ask Alpine to power down through QMP/ACPI before terminating QEMU.
+     * Returns true only when the guest exits within the requested grace period.
+     * Call from a worker thread; QMP and process waits are blocking.
+     */
     @Synchronized
-    fun stop(): Boolean {
+    fun stop(gracefulTimeoutMs: Long = 30_000L): Boolean {
+        require(gracefulTimeoutMs in 0L..120_000L) { "Délai d'arrêt invité invalide." }
         val running = process ?: return true
         if (!running.isAlive) {
             process = null
+            qmpSocket = null
             return true
         }
-        running.destroy()
-        val stopped = try {
-            running.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)
-        } catch (_: InterruptedException) {
-            Thread.currentThread().interrupt()
+
+        var powerdownRequested = false
+        val socketPath = qmpSocket?.absolutePath
+        if (!socketPath.isNullOrBlank()) {
+            try {
+                QmpClient(socketPath).use { qmp ->
+                    qmp.connect(timeoutMs = 3000)
+                    qmp.execute("system_powerdown")
+                    powerdownRequested = true
+                }
+            } catch (_: Exception) {
+                // QEMU may still be booting, or the guest may not expose ACPI.
+            }
+        }
+
+        val cleanShutdown = if (powerdownRequested) {
+            try {
+                running.waitFor(gracefulTimeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                false
+            }
+        } else {
             false
         }
-        if (!stopped) running.destroyForcibly()
+
+        if (!cleanShutdown && running.isAlive) {
+            running.destroy()
+            val terminated = try {
+                running.waitFor(3, java.util.concurrent.TimeUnit.SECONDS)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                false
+            }
+            if (!terminated) {
+                try {
+                    running.destroyForcibly().waitFor(2, java.util.concurrent.TimeUnit.SECONDS)
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                }
+            }
+        }
         process = null
-        return stopped
+        qmpSocket = null
+        return cleanShutdown
     }
 
     fun isRunning(): Boolean = process?.isAlive == true
