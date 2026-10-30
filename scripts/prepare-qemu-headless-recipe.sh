@@ -81,7 +81,7 @@ configure = r'''termux_step_configure() {
 		--disable-vnc-jpeg \
 		--enable-fdt=system \
 		--enable-slirp \
-		--audio-drv-list=oss \
+		--audio-drv-list= \
 		--disable-pa \
 		--disable-alsa \
 		--disable-jack \
