@@ -76,7 +76,7 @@ object QemuCommandBuilder {
 
         val command = listOf(
             config.qemuBinary.absolutePath,
-            "-machine", "virt",
+            "-machine", "virt,acpi=on",
             "-accel", "tcg,thread=multi",
             "-cpu", "max",
             "-smp", config.cpuCount.toString(),
