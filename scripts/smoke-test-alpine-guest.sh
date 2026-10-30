@@ -21,7 +21,7 @@ printf 'echo MIRACLE_ALPINE_ROOTFS_BOOT_OK\nexit\n' | timeout 75s "$QEMU" \
   -device virtio-blk-device,drive=rootdisk \
   -netdev user,id=net0 \
   -device virtio-net-device,netdev=net0 \
-  -nographic -monitor none -serial stdio -no-reboot > "$LOG" 2>&1
+  -display none -monitor none -serial stdio -no-reboot > "$LOG" 2>&1
 qemu_status=$?
 set -e
 if ! grep -q "MIRACLE_ALPINE_ROOTFS_BOOT_OK" "$LOG"; then
