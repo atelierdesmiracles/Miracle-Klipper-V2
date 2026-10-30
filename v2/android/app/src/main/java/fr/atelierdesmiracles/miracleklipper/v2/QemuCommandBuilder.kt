@@ -11,7 +11,6 @@ data class QemuGuestConfig(
     val kernelImage: File,
     val initrdImage: File,
     val diskImage: File,
-    val diskFormat: String = "raw",
     val qmpSocket: File,
     val serialLog: File,
     val processLog: File = File(serialLog.parentFile, "qemu-process.log"),
@@ -19,7 +18,8 @@ data class QemuGuestConfig(
     val memoryMb: Int = 1024,
     val cpuCount: Int = 2,
     val append: String = "console=ttyAMA0,115200 earlycon=pl011,0x09000000 rdinit=/init",
-    val libraryDirectory: File? = null
+    val libraryDirectory: File? = null,
+    val diskFormat: String = "raw"
 )
 
 sealed class QemuPreflightResult {
