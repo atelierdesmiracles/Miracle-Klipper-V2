@@ -5,6 +5,7 @@ on:
     branches: [rewrite/miracle-klipper-v2]
     paths:
       - 'scripts/build-alpine-guest.sh'
+      - 'scripts/smoke-test-alpine-guest.sh'
       - 'v2/runtime/klipper/**'
       - '.github/workflows/build-alpine-guest-arm64.yml'
 concurrency:
@@ -24,10 +25,12 @@ jobs:
       - name: Install ARM64 chroot and image tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-user-static binfmt-support e2fsprogs qemu-utils
+          sudo apt-get install -y qemu-user-static binfmt-support e2fsprogs qemu-utils qemu-system-arm
           sudo update-binfmts --enable qemu-aarch64
       - name: Build Alpine ARM64 kernel, initramfs and persistent root disk
         run: sudo bash scripts/build-alpine-guest.sh "$RUNNER_TEMP/alpine-guest"
+      - name: Boot-test Alpine kernel, initramfs and QCOW2 root disk
+        run: bash scripts/smoke-test-alpine-guest.sh "$RUNNER_TEMP/alpine-guest"
       - name: Verify generated guest assets
         run: |
           test -s "$RUNNER_TEMP/alpine-guest/boot/Image"
