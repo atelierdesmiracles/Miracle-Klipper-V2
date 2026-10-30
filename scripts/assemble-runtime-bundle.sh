@@ -58,10 +58,9 @@ root=Path(sys.argv[1])
 libdir=root/"lib"
 system={
  "libc.so","libm.so","libdl.so","liblog.so","libandroid.so","libz.so",
- "libstdc++.so","libdl_android.so","libEGL.so","libGLESv2.so",
+ "libEGL.so","libGLESv2.so",
  "libOpenSLES.so","libvulkan.so","libnativewindow.so","libjnigraphics.so",
- "libmediandk.so","libsync.so","libandroid_runtime.so","libbinder_ndk.so",
- "libutils.so","libbase.so","libc++_shared.so"
+ "libmediandk.so","libsync.so","libbinder_ndk.so"
 }
 queue=[root/"bin/qemu-system-aarch64"]
 seen=set()
