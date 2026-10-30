@@ -63,9 +63,7 @@ The guest OpenRC first-boot service installs the pinned stack if it is not alrea
 
 ## USB and physical printer boundary
 
-Android USB Host remains the permission authority. USB passthrough is not yet integrated. The next implementation must choose and validate one of:
-- QEMU USB host passthrough with a supported virtual USB controller and Android file-descriptor/device access; or
-- a dedicated Android USB serial bridge to a guest-visible serial endpoint.
+Android USB Host remains the permission authority. A serial bridge is now implemented in code: Android uses the usb-serial-for-android drivers for CDC/ACM, FTDI, CP210x and CH340 devices; it requests USB permission, opens the selected serial port, and bridges bytes through a loopback TCP socket on 127.0.0.1:8023. QEMU connects that socket to a virtio-serial port named org.miracle.usbserial. Alpine uses socat to expose the virtio port as /dev/ttyUSB0 for Klipper. This is a serial bridge, not raw USB passthrough. It still requires CI compilation and physical-device testing.
 
 VID/PID alone is not a unique device identity. Acceptance requires real CDC ACM, CH340, CP210x and FTDI tests, including disconnect/reconnect and permission revocation.
 
