@@ -8,6 +8,9 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
+import org.json.JSONObject
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -78,7 +81,8 @@ class VmRuntimeService : Service() {
             when (val result = controller.start(config, File(root, "work"))) {
                 is QemuStartResult.Started -> {
                     running = true
-                    updateNotification("VM démarrée — surveillance du système invité.")
+                    updateNotification("VM démarrée — attente de Moonraker et Klipper.")
+                    Thread { awaitGuestServices() }.apply { name = "MiracleKlipper-Readiness"; isDaemon = true; start() }
                     Thread {
                         try {
                             result.process.waitFor()
@@ -102,6 +106,48 @@ class VmRuntimeService : Service() {
             running = false
             updateNotification("Démarrage impossible : " + (error.message ?: "erreur inconnue"))
             stopSelf(startId)
+        }
+    }
+
+
+    private fun awaitGuestServices() {
+        val deadline = System.currentTimeMillis() + 180_000L
+        while (!stopping.get() && controller.isRunning() && System.currentTimeMillis() < deadline) {
+            var connection: HttpURLConnection? = null
+            try {
+                connection = (URL("http://127.0.0.1:7125/server/info").openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 2500
+                    readTimeout = 2500
+                    requestMethod = "GET"
+                }
+                if (connection.responseCode == 200) {
+                    val payload = connection.inputStream.bufferedReader().use { it.readText() }
+                    val result = JSONObject(payload).optJSONObject("result")
+                    val state = result?.optString("klippy_state", "unknown") ?: "unknown"
+                    when (state) {
+                        "ready" -> {
+                            updateNotification("Alpine + Moonraker + Klipper prêts. Mainsail : http://127.0.0.1:8080")
+                            return
+                        }
+                        "disconnected" -> updateNotification("Alpine et Moonraker accessibles. Klipper attend la configuration MCU.")
+                        else -> updateNotification("Moonraker accessible. État Klipper : $state")
+                    }
+                    return
+                }
+            } catch (_: Exception) {
+                // The guest may still be booting or installing its first-boot stack.
+            } finally {
+                connection?.disconnect()
+            }
+            try {
+                Thread.sleep(3000L)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return
+            }
+        }
+        if (!stopping.get() && controller.isRunning()) {
+            updateNotification("VM active, mais Moonraker n'est pas encore joignable. Consultez le journal série.")
         }
     }
 
