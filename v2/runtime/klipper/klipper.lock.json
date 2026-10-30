@@ -1,12 +1,39 @@
 {
-  "component": "Klipper host service",
-  "repository": "https://github.com/Klipper3d/klipper.git",
-  "revision": "ee2c6fb6b00b2b5d097ef70d0868df7d74943b51",
+  "schemaVersion": 1,
   "guest": "Alpine Linux ARM64",
-  "pythonRequirements": "scripts/klippy-requirements.txt",
-  "installScript": "v2/runtime/klipper/install-klipper-alpine.sh",
-  "runtime": "isolated Python virtual environment",
-  "moonraker": "not installed in this phase",
-  "mainsail": "not installed in this phase",
-  "status": "installer implemented; Alpine guest execution and Klipper startup not yet validated"
+  "deployment": "native-processes-in-guest",
+  "note": "Docker is deferred until the Alpine guest kernel passes namespace, cgroup, OverlayFS and networking validation.",
+  "components": {
+    "klipper": {
+      "repository": "https://github.com/Klipper3d/klipper.git",
+      "revision": "ee2c6fb6b00b2b5d097ef70d0868df7d74943b51",
+      "requirements": "scripts/klippy-requirements.txt",
+      "pythonEnvironment": "/opt/miracle-klipper/venvs/klipper"
+    },
+    "moonraker": {
+      "repository": "https://github.com/Arksine/moonraker.git",
+      "revision": "b559b9a81161f958a43c2f527b6ad96f73310d5d",
+      "requirements": "scripts/moonraker-requirements.txt",
+      "pythonEnvironment": "/opt/miracle-klipper/venvs/moonraker",
+      "httpListen": "127.0.0.1:7125"
+    },
+    "mainsail": {
+      "version": "v2.19.0",
+      "asset": "https://github.com/mainsail-crew/mainsail/releases/download/v2.19.0/mainsail.zip",
+      "sha256": "c4d9d96f89851c6ae0709c2f20725447f3fe8c57cf193869b0083441bd93378a",
+      "webRoot": "/var/www/mainsail"
+    },
+    "nginx": {
+      "listen": "127.0.0.1:8080",
+      "proxy": "127.0.0.1:7125"
+    }
+  },
+  "dataRoot": "/var/lib/miracle-klipper",
+  "installer": "v2/runtime/klipper/install-klipper-alpine.sh",
+  "commands": [
+    "miracle-klipper-start",
+    "miracle-klipper-stop",
+    "miracle-klipper-status"
+  ],
+  "status": "integration implemented; runtime validation pending"
 }
