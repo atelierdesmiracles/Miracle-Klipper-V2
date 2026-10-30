@@ -165,5 +165,6 @@ Root disk virtual size: $DISK_SIZE_MIB MiB
 Root filesystem: ext4 inside qcow2
 Boot arguments: console=ttyAMA0,115200 root=/dev/vda rootfstype=ext4 rootwait rw
 EOF
+if [ -n "${SUDO_UID:-}" ] && [ -n "${SUDO_GID:-}" ]; then chown -R "$SUDO_UID:$SUDO_GID" "$OUT"; fi
 echo "Alpine ARM64 guest assets built in: $OUT"
 du -h "$OUT/boot/Image" "$OUT/boot/initramfs" "$OUT/disk/rootfs.qcow2"
