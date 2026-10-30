@@ -21,7 +21,7 @@ mkdir -p "$BASE" "$VENV" "$CONFIG" "$LOGS" "$DATA/gcodes" "$COMMS" "$DATA/state"
 exec >>"$LOGS/install-stack.log" 2>&1
 
 echo "[Miracle Klipper] Installing Alpine dependencies"
-apk add --no-cache ca-certificates curl git nginx python3 py3-pip py3-virtualenv \
+apk add --no-cache ca-certificates curl git nginx python3 py3-pip py3-virtualenv unzip procps \
   build-base linux-headers musl-dev libffi-dev openssl-dev jpeg-dev zlib-dev
 
 fetch_pinned() {
