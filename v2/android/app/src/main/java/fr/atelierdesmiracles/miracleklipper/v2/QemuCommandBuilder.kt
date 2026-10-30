@@ -33,7 +33,7 @@ object QemuCommandBuilder {
         if (config.cpuCount !in 1..8) {
             return QemuPreflightResult.Invalid("Le nombre de vCPU doit être compris entre 1 et 8.")
         }
-        if (config.append.isBlank() || config.append.any { it == '\\n' || it == '\\r' }) {
+        if (config.append.isBlank() || config.append.any { it == '\n' || it == '\r' }) {
             return QemuPreflightResult.Invalid("La ligne de démarrage du noyau est invalide.")
         }
 
@@ -50,7 +50,7 @@ object QemuCommandBuilder {
         if (missing.isNotEmpty()) return QemuPreflightResult.Missing(missing)
 
         val socketPath = config.qmpSocket.absolutePath
-        if (socketPath.any { it == ',' || it == '\\n' || it == '\\r' }) {
+        if (socketPath.any { it == ',' || it == '\n' || it == '\r' }) {
             return QemuPreflightResult.Invalid("Le chemin du socket QMP contient un caractère interdit.")
         }
 
