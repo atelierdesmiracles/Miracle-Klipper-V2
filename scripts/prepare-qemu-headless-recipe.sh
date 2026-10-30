@@ -86,9 +86,11 @@ configure = r'''termux_step_configure() {
 }
 
 termux_step_post_make_install() {
-	ln -sfr \
-		"$TERMUX_PREFIX"/share/man/man1/qemu.1 \
-		"$TERMUX_PREFIX"/share/man/man1/qemu-system-aarch64.1
+  local runtime_dir="$TERMUX_PKG_MASSAGEDIR$TERMUX_PREFIX/share/miracle-klipper"
+  mkdir -p "$runtime_dir/lib" "$runtime_dir/licenses"
+  find "$TERMUX_PREFIX/lib" -maxdepth 1 \( -type f -o -type l \) -name "*.so*" -exec cp -L {} "$runtime_dir/lib/" \;
+  if [ -d "$TERMUX_PREFIX/share/doc" ]; then cp -a "$TERMUX_PREFIX/share/doc/." "$runtime_dir/licenses/"; fi
+  ln -sfr "$TERMUX_PREFIX/share/man/man1/qemu.1" "$TERMUX_PREFIX/share/man/man1/qemu-system-aarch64.1"
 }
 '''
 text, count = re.subn(
