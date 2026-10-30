@@ -1,46 +1,29 @@
 # Phase 2 — QEMU integration boundary
 
-## Implemented in this increment
+## Implemented
 
-- A deterministic QEMU command builder for the ARM64 `virt` machine.
-- TCG multi-threaded emulation as the baseline; no KVM/host-root assumption.
-- VirtIO block and network devices for the guest.
-- A private Unix QMP socket path and serial log target.
-- Preflight checks for the QEMU executable, kernel, initramfs, disk image, memory, vCPU count, and unsafe socket paths.
-- A process controller with start/stop handling and explicit error results.
-- JVM tests for missing artifacts, command generation, path validation, and resource bounds.
+- Deterministic QEMU command builder for ARM64 `virt` with TCG and VirtIO.
+- Process start/stop adapter with preflight validation and separate process/serial logs.
+- Sparse raw disk provisioning in app-private storage. Existing disks are never truncated or resized.
+- Local Unix-socket QMP client: greeting validation, capability negotiation, command execution, event skipping, and error handling.
+- Unit tests for QEMU command generation, missing artifacts, resource bounds, unsafe paths, and persistent disk provisioning.
 
 ## Not yet implemented or proven
 
-This code is an integration layer, not a bundled emulator. The repository still needs:
-1. A QEMU `qemu-system-aarch64` build for Android Bionic `arm64-v8a`, including its runtime shared libraries and license notices.
-2. A pinned Alpine ARM64 kernel built for QEMU `virt`, with PL011 console, initramfs, and VirtIO drivers.
-3. A reproducible initramfs/rootfs assembly process and checksums.
-4. QMP client and guest readiness protocol.
-5. Android foreground service, persistent disk creation, and safe app lifecycle integration.
-6. Physical-device boot tests.
+1. QEMU `qemu-system-aarch64` compiled for Android Bionic `arm64-v8a`, with dependent libraries and notices.
+2. Pinned Alpine ARM64 kernel, initramfs and root filesystem for QEMU `virt`.
+3. Verified QEMU build support for raw block and VirtIO devices.
+4. Android foreground service and UI integration for VM lifecycle.
+5. Guest boot protocol/readiness signal and physical-device boot proof.
+6. Docker Engine, Klipper, Moonraker, Mainsail and USB serial integration.
 
-The controller must not be connected to the app's Start button until the binary and guest artifacts are bundled or safely installed and their checksums verified.
-
-## Boot command design
-
-The generated command uses:
-- `-machine virt`, `-accel tcg,thread=multi`, `-cpu max`;
-- ARM64 kernel and initramfs boot;
-- `console=ttyAMA0,115200` as the default serial console;
-- a qcow2 VirtIO block disk;
-- user-mode NAT and VirtIO networking;
-- headless operation and a private Unix QMP socket.
-
-The Alpine kernel/initramfs must explicitly support these devices. The generated command alone does not establish that the guest can boot.
+The QMP client and disk manager are infrastructure only. They do not prove QEMU is present or that a guest can boot.
 
 ## Validation
-
-Run:
 
 ```bash
 gradle -p v2/android testDebugUnitTest
 gradle -p v2/android assembleDebug
 ```
 
-The phase-2 acceptance gate remains a successful Alpine readiness handshake on a physical ARM64 Android phone, followed by persistence and clean-shutdown tests.
+Acceptance remains a successful Alpine readiness handshake on a physical ARM64 Android phone, persistence across app restart, and clean shutdown without filesystem corruption.
