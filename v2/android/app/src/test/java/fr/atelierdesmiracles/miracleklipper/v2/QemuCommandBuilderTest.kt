@@ -34,7 +34,7 @@ class QemuCommandBuilderTest {
         assertTrue(result is QemuPreflightResult.Ready)
         val command = (result as QemuPreflightResult.Ready).command
         assertTrue(command.contains("tcg,thread=multi"))
-        assertTrue(command.contains("virt"))
+        assertTrue(command.contains("virt,acpi=on"))
         assertTrue(command.contains("virtio-blk-device,drive=vdisk"))
         assertTrue(command.any { it.contains("format=raw,file=") })
         assertTrue(command.any { it.startsWith("unix:") })
