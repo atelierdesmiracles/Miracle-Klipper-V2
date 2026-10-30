@@ -10,6 +10,9 @@ on:
       - 'v2/runtime/qemu/**'
       - 'scripts/verify-qemu-source.sh'
       - 'scripts/prepare-qemu-headless-recipe.sh'
+      - 'scripts/build-alpine-guest.sh'
+      - 'scripts/assemble-runtime-bundle.sh'
+      - 'v2/runtime/klipper/**'
 
 permissions:
   contents: read
@@ -52,11 +55,10 @@ jobs:
         run: |
           mkdir -p qemu-output
           if [ -d termux-packages/output ]; then
-            for package in termux-packages/output/*.deb termux-packages/output/*.tar.xz; do
-              [ -f "$package" ] || continue
+            while IFS= read -r -d '' package; do
               filename="$(basename "$package" | tr ':' '_')"
               cp "$package" "qemu-output/$filename"
-            done
+            done < <(find termux-packages/output -type f -name '*.deb' -o -name '*.tar.xz' -print0)
           fi
           if [ -n "$(find qemu-output -type f ! -name 'SHA256SUMS' -print -quit)" ]; then
             (cd qemu-output && sha256sum * > SHA256SUMS)
@@ -65,10 +67,37 @@ jobs:
       - name: Audit Android QEMU ELF package
         if: success()
         run: |
-          package="$(find qemu-output -maxdepth 1 -type f -name 'qemu-system-aarch64_*.deb' -print -quit)"
+          package=""
+          for candidate in qemu-output/*.deb; do
+            [ -f "$candidate" ] || continue
+            if dpkg-deb -c "$candidate" | grep -q '/qemu-system-aarch64$'; then package="$candidate"; break; fi
+          done
           test -n "$package"
           bash scripts/audit-qemu-android-package.sh "$package"
 
+      - name: Install runtime bundle build tools
+        if: success()
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static binfmt-support e2fsprogs qemu-utils patchelf zip
+          sudo update-binfmts --enable qemu-aarch64
+
+      - name: Build Alpine ARM64 guest
+        if: success()
+        run: sudo bash scripts/build-alpine-guest.sh "$RUNNER_TEMP/alpine-guest"
+
+      - name: Assemble complete Android runtime bundle
+        if: success()
+        run: bash scripts/assemble-runtime-bundle.sh qemu-output "$RUNNER_TEMP/alpine-guest" runtime-output
+
+      - name: Upload complete Miracle Klipper runtime bundle
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: miracle-klipper-v2-runtime-alpine-arm64
+          path: runtime-output/*
+          if-no-files-found: error
+          retention-days: 30
       - name: Upload QEMU package artifacts and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
