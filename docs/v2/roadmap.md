@@ -85,7 +85,7 @@ Gate:
 Implemented in code, pending validation:
 - Android USB Host permission and detach handling.
 - USB serial drivers for CDC/ACM, CH340, CP210x and FTDI via usb-serial-for-android.
-- Loopback TCP bridge on Android, QEMU virtio-serial channel, Alpine socat PTY at /dev/ttyUSB0.
+- Loopback TCP bridge on Android, QEMU virtio-serial channel, Alpine socat PTY at /dev/ttyMiracleMCU.
 - Device selection and configurable baud rate in the Android UI.
 
 Still required:
