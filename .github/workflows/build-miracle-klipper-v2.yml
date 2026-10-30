@@ -7,6 +7,7 @@ on:
     paths:
       - 'v2/android/**'
       - 'v2/runtime/qemu/**'
+      - 'v2/runtime/klipper/**'
       - 'scripts/verify-qemu-source.sh'
       - '.github/workflows/build-miracle-klipper-v2.yml'
   pull_request:
@@ -25,6 +26,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify pinned QEMU source archive
         run: bash scripts/verify-qemu-source.sh
+      - name: Validate guest runtime scripts and lock files
+        run: |
+          sh -n v2/runtime/klipper/install-klipper-alpine.sh
+          python3 -m json.tool v2/runtime/klipper/klipper.lock.json >/dev/null
+          grep -q 'ee2c6fb6b00b2b5d097ef70d0868df7d74943b51' v2/runtime/klipper/install-klipper-alpine.sh
+          grep -q 'b559b9a81161f958a43c2f527b6ad96f73310d5d' v2/runtime/klipper/install-klipper-alpine.sh
+          grep -q 'v2.19.0' v2/runtime/klipper/install-klipper-alpine.sh
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
