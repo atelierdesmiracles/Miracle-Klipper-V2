@@ -8,6 +8,9 @@ import android.os.Build
 import android.os.Bundle
 import android.os.StatFs
 import android.content.Intent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
 import android.net.Uri
 import android.graphics.Typeface
 import android.view.Gravity
@@ -27,7 +30,6 @@ class MainActivity : Activity() {
     private lateinit var moonrakerUrl: EditText
     private lateinit var moonrakerApiKey: EditText
     private lateinit var moonrakerStatus: TextView
-    private lateinit var printMonitor: MoonrakerPrintMonitor
     private lateinit var runtimeStatus: TextView
     private lateinit var usbStatus: TextView
     private lateinit var usbDeviceSpinner: Spinner
@@ -37,16 +39,6 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         completionMusic = PrintCompletionMusic(this)
-        printMonitor = MoonrakerPrintMonitor(
-            onPrintCompleted = { filename ->
-                runOnUiThread {
-                    val played = completionMusic.playForCompletedPrint()
-                    moonrakerStatus.text = if (played) "Impression terminée : $filename — musique lancée."
-                    else "Impression terminée : $filename — musique automatique désactivée ou aucun morceau choisi."
-                }
-            },
-            onConnectionState = { state -> runOnUiThread { moonrakerStatus.text = state } }
-        )
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(22), dp(28), dp(22), dp(24))
@@ -183,13 +175,22 @@ class MainActivity : Activity() {
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
         }
         content.addView(moonrakerApiKey)
-        moonrakerStatus = label("Non connecté à Moonraker", 14, 0xFF17283B.toInt(), false)
+        moonrakerStatus = label(VmRuntimeService.monitorStatus, 14, 0xFF17283B.toInt(), false)
         content.addView(moonrakerStatus)
         content.addView(Button(this).apply {
             text = "Connecter à Moonraker"
             setOnClickListener {
                 try {
-                    printMonitor.connect(moonrakerUrl.text.toString(), moonrakerApiKey.text.toString())
+                    if (!VmRuntimeService.running) {
+                        moonrakerStatus.text = "Démarrez d'abord la machine virtuelle."
+                    } else {
+                        val monitorIntent = Intent(this@MainActivity, VmRuntimeService::class.java)
+                            .setAction(VmRuntimeService.ACTION_CONNECT_MONITOR)
+                            .putExtra(VmRuntimeService.EXTRA_MOONRAKER_URL, moonrakerUrl.text.toString())
+                            .putExtra(VmRuntimeService.EXTRA_MOONRAKER_API_KEY, moonrakerApiKey.text.toString())
+                        startService(monitorIntent)
+                        moonrakerStatus.text = "Demande de connexion envoyée au service de surveillance."
+                    }
                 } catch (error: IllegalArgumentException) {
                     moonrakerStatus.text = error.message ?: "Adresse Moonraker invalide"
                 }
@@ -197,7 +198,10 @@ class MainActivity : Activity() {
         })
         content.addView(Button(this).apply {
             text = "Déconnecter Moonraker"
-            setOnClickListener { printMonitor.disconnect() }
+            setOnClickListener {
+                startService(Intent(this@MainActivity, VmRuntimeService::class.java).setAction(VmRuntimeService.ACTION_DISCONNECT_MONITOR))
+                moonrakerStatus.text = "Déconnexion demandée."
+            }
         })
         content.addView(label("ÉTAT DU PROTOTYPE", 12, 0xFF536579.toInt(), true))
         report = label("", 15, 0xFF17283B.toInt(), false).apply {
@@ -304,8 +308,36 @@ class MainActivity : Activity() {
 
     companion object { private const val REQUEST_AUDIO_TRACK = 4102; private const val REQUEST_RUNTIME_BUNDLE = 4103 }
 
+    private val monitorStatusReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            moonrakerStatus.text = intent.getStringExtra(VmRuntimeService.EXTRA_MONITOR_STATUS)
+                ?: VmRuntimeService.monitorStatus
+        }
+    }
+    private var monitorReceiverRegistered = false
+
+    override fun onStart() {
+        super.onStart()
+        val filter = IntentFilter(VmRuntimeService.ACTION_MONITOR_STATUS)
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(monitorStatusReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            registerReceiver(monitorStatusReceiver, filter)
+        }
+        monitorReceiverRegistered = true
+        moonrakerStatus.text = VmRuntimeService.monitorStatus
+    }
+
+    override fun onStop() {
+        if (monitorReceiverRegistered) {
+            unregisterReceiver(monitorStatusReceiver)
+            monitorReceiverRegistered = false
+        }
+        super.onStop()
+    }
+
     override fun onDestroy() {
-        if (::printMonitor.isInitialized) printMonitor.shutdown()
         if (::completionMusic.isInitialized) completionMusic.stop()
         UsbSerialBridge.clearStatusListener()
         super.onDestroy()
