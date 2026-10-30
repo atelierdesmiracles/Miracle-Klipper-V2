@@ -17,6 +17,10 @@ class QemuProcessController {
             is QemuPreflightResult.Missing -> return QemuStartResult.MissingFiles(preflight.items)
             is QemuPreflightResult.Invalid -> return QemuStartResult.Invalid(preflight.reason)
             is QemuPreflightResult.Ready -> {
+                val binaryCheck = QemuBinaryVerifier.verify(config.qemuBinary, config.expectedQemuSha256)
+                if (binaryCheck is QemuBinaryVerification.Rejected) {
+                    return QemuStartResult.Invalid(binaryCheck.reason)
+                }
                 return try {
                     if (!workingDirectory.exists() && !workingDirectory.mkdirs()) {
                         return QemuStartResult.Failed("Impossible de créer le répertoire de travail.")
