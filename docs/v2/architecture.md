@@ -54,6 +54,7 @@ The SHA-256 manifest detects file corruption or a payload that does not match it
 |---|---|---|
 | `127.0.0.1:8080` | TCP hostfwd | nginx/Mainsail on guest port 8080 |
 | `127.0.0.1:7125` | TCP hostfwd | Moonraker on guest port 7125 |
+| `127.0.0.1:<ephemeral>` | QEMU socket chardev | virtio-serial → socat → `/dev/ttyUSB0` |
 
 The QEMU hostfwd listener is bound to Android loopback. Do not change it to `0.0.0.0` without an explicit authentication and security review. Moonraker trusts the QEMU user-network source subnet and must not be exposed directly to an untrusted LAN.
 
