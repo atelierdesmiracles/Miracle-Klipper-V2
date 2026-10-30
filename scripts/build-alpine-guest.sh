@@ -28,6 +28,9 @@ EXPECTED="$(awk 'NR==1 {print $1}' "$ARCHIVE.sha256")"
 printf '%s  %s\n' "$EXPECTED" "$ARCHIVE" | sha256sum -c -
 mkdir -p "$ROOT"
 tar -xzf "$ARCHIVE" -C "$ROOT"
+# The chroot shares the runner network namespace; copy the runner resolver into the guest root.
+rm -f "$ROOT/etc/resolv.conf"
+cp -L /etc/resolv.conf "$ROOT/etc/resolv.conf"
 install -D -m 0755 /usr/bin/qemu-aarch64-static "$ROOT/usr/bin/qemu-aarch64-static"
 cat > "$ROOT/etc/apk/repositories" <<EOF
 $BASE_URL/main
