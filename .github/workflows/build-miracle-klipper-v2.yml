@@ -92,6 +92,8 @@ jobs:
 
       - name: Verify generated APKs
         run: |
+          export PATH="$ANDROID_HOME/build-tools/35.0.0:$PATH"
+          command -v aapt
           test -n "$(find v2/android/app/build/outputs/apk/debug -maxdepth 1 -name '*.apk' -print -quit)"
           test -n "$(find v2/android/app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
           for apk in v2/android/app/build/outputs/apk/debug/*.apk v2/android/app/build/outputs/apk/release/*.apk; do
