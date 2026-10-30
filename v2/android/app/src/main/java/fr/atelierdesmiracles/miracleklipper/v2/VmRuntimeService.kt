@@ -118,7 +118,7 @@ class VmRuntimeService : Service() {
 
 
     private fun awaitGuestServices() {
-        val deadline = System.currentTimeMillis() + 900_000L
+        val deadline = System.currentTimeMillis() + 1_800_000L
         while (!stopping.get() && controller.isRunning() && System.currentTimeMillis() < deadline) {
             var connection: HttpURLConnection? = null
             try {
