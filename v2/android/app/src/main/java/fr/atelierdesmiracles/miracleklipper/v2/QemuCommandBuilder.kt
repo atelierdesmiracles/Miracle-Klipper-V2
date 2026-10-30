@@ -19,7 +19,8 @@ data class QemuGuestConfig(
     val cpuCount: Int = 2,
     val append: String = "console=ttyAMA0,115200 earlycon=pl011,0x09000000 rdinit=/init",
     val libraryDirectory: File? = null,
-    val diskFormat: String = "raw"
+    val diskFormat: String = "raw",
+    val usbSerialPort: Int = 8023
 )
 
 sealed class QemuPreflightResult {
@@ -32,6 +33,9 @@ object QemuCommandBuilder {
     fun build(config: QemuGuestConfig): QemuPreflightResult {
         if (config.memoryMb < 256 || config.memoryMb > 16384) {
             return QemuPreflightResult.Invalid("La mémoire VM doit être comprise entre 256 et 16384 Mo.")
+        }
+        if (config.usbSerialPort !in 1..65535) {
+            return QemuPreflightResult.Invalid("Le port local du pont USB série est non initialisé.")
         }
         if (config.diskFormat !in setOf("raw", "qcow2")) {
             return QemuPreflightResult.Invalid("Le format du disque doit être raw ou qcow2.")
@@ -84,7 +88,7 @@ object QemuCommandBuilder {
             "-device", "virtio-blk-device,drive=vdisk",
             "-netdev", "user,id=net0,hostfwd=tcp:127.0.0.1:8080-:8080,hostfwd=tcp:127.0.0.1:7125-:7125",
             "-device", "virtio-net-device,netdev=net0",
-            "-chardev", "socket,id=usbserial,host=127.0.0.1,port=8023,server=off,reconnect=5",
+            "-chardev", "socket,id=usbserial,host=127.0.0.1,port=${config.usbSerialPort},server=off,reconnect=5",
             "-device", "virtio-serial-device,id=virtio-serial0",
             "-device", "virtserialport,bus=virtio-serial0.0,chardev=usbserial,name=org.miracle.usbserial",
             "-display", "none",
