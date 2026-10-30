@@ -27,7 +27,6 @@ class MoonrakerPrintMonitor(
 
     @Volatile private var socket: WebSocket? = null
     @Volatile private var armedForCompletion = false
-    @Volatile private var lastCompletedFilename: String? = null
     @Volatile private var currentFilename: String = ""
 
     fun connect(baseUrl: String, apiKey: String? = null) {
@@ -91,9 +90,8 @@ class MoonrakerPrintMonitor(
             "printing" -> armedForCompletion = true
             "complete" -> {
                 val completed = currentFilename
-                if (armedForCompletion && completed.isNotBlank() && completed != lastCompletedFilename) {
+                if (armedForCompletion && completed.isNotBlank()) {
                     armedForCompletion = false
-                    lastCompletedFilename = completed
                     onPrintCompleted(completed)
                 }
             }
