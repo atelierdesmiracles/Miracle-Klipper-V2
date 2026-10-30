@@ -91,6 +91,8 @@ object UsbSerialBridge {
         startServer()
     }
 
+    fun clearStatusListener() { listener = null }
+
     fun scan(): List<UsbSerialDeviceInfo> {
         val manager = usbManager ?: return emptyList()
         return UsbSerialProber.getDefaultProber().findAllDrivers(manager).map { driver ->
