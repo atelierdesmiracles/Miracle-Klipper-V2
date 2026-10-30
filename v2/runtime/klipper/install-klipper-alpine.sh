@@ -215,6 +215,10 @@ else
   echo "$!" > "$DATA/state/moonraker.pid"
 fi
 
+if [ -x /etc/init.d/miracle-klipper-usb-serial ]; then
+  rc-service miracle-klipper-usb-serial start || true
+fi
+
 if grep -Eq '^[[:space:]]*\[mcu\][[:space:]]*$' "$CONFIG/printer.cfg" &&
    grep -Eq '^[[:space:]]*\[printer\][[:space:]]*$' "$CONFIG/printer.cfg"; then
   if pgrep -f '[k]lippy/klippy.py' >/dev/null 2>&1; then
