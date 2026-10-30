@@ -65,6 +65,7 @@ class VmRuntimeService : Service() {
             ACTION_CONNECT_MONITOR -> {
                 if (!running) {
                     publishMonitorStatus("Démarrez la machine virtuelle avant de connecter Moonraker.")
+                    stopSelf(startId)
                 } else {
                     val url = intent.getStringExtra(EXTRA_MOONRAKER_URL).orEmpty()
                     val key = intent.getStringExtra(EXTRA_MOONRAKER_API_KEY)
@@ -75,7 +76,10 @@ class VmRuntimeService : Service() {
                     }
                 }
             }
-            ACTION_DISCONNECT_MONITOR -> printMonitor.disconnect()
+            ACTION_DISCONNECT_MONITOR -> {
+                printMonitor.disconnect()
+                if (!running) stopSelf(startId)
+            }
             ACTION_START -> {
                 if (controller.isRunning()) {
                     running = true
