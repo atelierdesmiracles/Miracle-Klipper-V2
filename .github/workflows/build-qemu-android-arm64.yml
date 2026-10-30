@@ -13,10 +13,8 @@ jobs:
     steps:
       - name: Checkout Miracle Klipper V2
         uses: actions/checkout@v4
-      - name: Install build tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git docker.io
+      - name: Verify Docker availability
+        run: docker version
       - name: Checkout pinned Termux package builder
         env:
           TERMUX_PACKAGES_COMMIT: 0e1306a2df4492ce5113fe220b65c4c4a4bf6e2d
@@ -28,12 +26,16 @@ jobs:
         working-directory: termux-packages
         run: |
           chmod +x scripts/run-docker.sh build-package.sh
+          mkdir -p ../qemu-output
           ./scripts/run-docker.sh ./build-package.sh -f -I qemu-system-x86-64
+          docker image inspect ghcr.io/termux/package-builder --format '{{.Id}}' > ../qemu-output/builder-image-id.txt
+          git rev-parse HEAD > ../qemu-output/termux-packages-commit.txt
       - name: Collect QEMU package outputs
         run: |
           mkdir -p qemu-output
-          find termux-packages/output -maxdepth 1 -type f \\( -name '*.deb' -o -name '*.tar.xz' \\) -print -exec cp {} qemu-output/ \\;
-          test -n "$(find qemu-output -type f -print -quit)"
+          find termux-packages/output -maxdepth 1 -type f -name '*.deb' -exec cp {} qemu-output/ \;
+          find termux-packages/output -maxdepth 1 -type f -name '*.tar.xz' -exec cp {} qemu-output/ \;
+          test -n "$(find qemu-output -type f -name '*.deb' -print -quit)"
           sha256sum qemu-output/* > qemu-output/SHA256SUMS
       - name: Upload QEMU package artifacts
         uses: actions/upload-artifact@v4
