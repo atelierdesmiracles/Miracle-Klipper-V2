@@ -157,6 +157,8 @@ object UsbSerialBridge {
 
     @Synchronized
     fun disconnect() {
+        activeSocket?.let { try { it.close() } catch (_: Exception) { } }
+        activeSocket = null
         serialPort?.let { try { it.close() } catch (_: Exception) { } }
         serialPort = null
         usbConnection?.close()
