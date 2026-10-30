@@ -64,7 +64,7 @@ object QemuCommandBuilder {
             "-kernel", config.kernelImage.absolutePath,
             "-initrd", config.initrdImage.absolutePath,
             "-append", config.append,
-            "-drive", "if=none,id=vdisk,format=qcow2,file=${config.diskImage.absolutePath}",
+            "-drive", "if=none,id=vdisk,format=raw,file=${config.diskImage.absolutePath}",
             "-device", "virtio-blk-device,drive=vdisk",
             "-netdev", "user,id=net0",
             "-device", "virtio-net-device,netdev=net0",
