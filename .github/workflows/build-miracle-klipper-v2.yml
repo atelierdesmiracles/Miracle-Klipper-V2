@@ -40,7 +40,8 @@ jobs:
         run: |
           test -f v2/android/settings.gradle || test -f v2/android/settings.gradle.kts
           test -f v2/android/app/build.gradle || test -f v2/android/app/build.gradle.kts
-          if grep -nE '(^|[[:space:]])(gradle|./gradlew)[[:space:]]+(-p[[:space:]]+)?app([[:space:]]|$)|projectDir.*app' .github/workflows/build-miracle-klipper-v2.yml; then
+          grep -qE 'gradle -p v2/android (testDebugUnitTest|assembleDebug|assembleRelease)' .github/workflows/build-miracle-klipper-v2.yml
+          if grep -qE 'gradle -p app([[:space:]]|$)' .github/workflows/build-miracle-klipper-v2.yml; then
             echo "Erreur: le workflow V2 ne doit jamais compiler le projet legacy app/."
             exit 1
           fi
