@@ -21,8 +21,17 @@ mkdir -p "$BASE" "$VENV" "$CONFIG" "$LOGS" "$DATA/gcodes" "$COMMS" "$DATA/state"
 exec >>"$LOGS/install-stack.log" 2>&1
 
 echo "[Miracle Klipper] Installing Alpine dependencies"
-apk add --no-cache ca-certificates curl git nginx openrc socat python3 py3-pip py3-virtualenv unzip procps \
-  build-base linux-headers musl-dev libffi-dev openssl-dev jpeg-dev zlib-dev socat
+apk add --no-cache ca-certificates curl git nginx openrc socat acpid python3 py3-pip py3-virtualenv unzip procps \
+  build-base linux-headers musl-dev libffi-dev openssl-dev jpeg-dev zlib-dev
+
+# Handle QEMU's ACPI power-button event for a clean guest shutdown.
+mkdir -p /etc/acpi/events
+cat > /etc/acpi/events/miracle-power-button <<'EOF'
+event=button/power.*
+action=/sbin/poweroff
+EOF
+rc-update add acpid default
+rc-service acpid start || true
 
 fetch_pinned() {
   repo="$1"
@@ -106,7 +115,10 @@ rm -rf "$tmp_zip" /tmp/mainsail-unpack
 if [ ! -f "$CONFIG/printer.cfg" ]; then
   cat > "$CONFIG/printer.cfg" <<'EOF'
 # Miracle Klipper - neutral printer configuration.
-# Example USB bridge: [mcu] then serial: /dev/ttyMiracleMCU (uncomment only after USB is connected).\n# Add the correct [mcu] serial path and printer-specific [printer],
+# Example USB bridge (uncomment after connecting the printer):
+# [mcu]
+# serial: /dev/ttyMiracleMCU
+# Add the printer-specific [printer], stepper, heater, thermistor and safety sections.
 # stepper, heater, thermistor and safety sections before starting Klipper.
 EOF
 fi
@@ -203,15 +215,6 @@ else
   echo "$!" > "$DATA/state/moonraker.pid"
 fi
 
-if [ -e /dev/virtio-ports/org.miracle.usbserial ] && \
-   ! pgrep -f '[s]ocat.*org.miracle.usbserial' >/dev/null 2>&1; then
-  rm -f /dev/ttyUSB0
-  nohup socat PTY,link=/dev/ttyUSB0,raw,echo=0,mode=660 \
-    /dev/virtio-ports/org.miracle.usbserial,raw,echo=0 \
-    >>"$LOGS/usb-serial-bridge.log" 2>&1 &
-  echo "$!" > "$DATA/state/usbserial.pid"
-fi
-
 if grep -Eq '^[[:space:]]*\[mcu\][[:space:]]*$' "$CONFIG/printer.cfg" &&
    grep -Eq '^[[:space:]]*\[printer\][[:space:]]*$' "$CONFIG/printer.cfg"; then
   if pgrep -f '[k]lippy/klippy.py' >/dev/null 2>&1; then
@@ -234,7 +237,7 @@ cat > /usr/local/bin/miracle-klipper-stop <<'EOF'
 #!/bin/sh
 set -u
 DATA="/var/lib/miracle-klipper"
-for service in klipper moonraker usbserial; do
+for service in klipper moonraker; do
   pidfile="$DATA/state/$service.pid"
   if [ -f "$pidfile" ]; then
     pid="$(cat "$pidfile")"
@@ -242,6 +245,7 @@ for service in klipper moonraker usbserial; do
     rm -f "$pidfile"
   fi
 done
+rc-service miracle-klipper-usb-serial stop 2>/dev/null || true
 nginx -s quit 2>/dev/null || true
 echo "Miracle Klipper services stop requested"
 EOF
@@ -253,7 +257,8 @@ set +e
 pgrep -f '[k]lippy/klippy.py' >/dev/null 2>&1 && echo "Klipper: running" || echo "Klipper: stopped"
 pgrep -f '[m]oonraker/moonraker.py' >/dev/null 2>&1 && echo "Moonraker: running" || echo "Moonraker: stopped"
 pgrep -f '[n]ginx: master process' >/dev/null 2>&1 && echo "Mainsail/Nginx: running" || echo "Mainsail/Nginx: stopped"
-pgrep -f '[s]ocat.*org.miracle.usbserial' >/dev/null 2>&1 && echo "USB serial bridge: running" || echo "USB serial bridge: stopped"
+rc-service miracle-klipper-usb-serial status >/dev/null 2>&1 && echo "USB serial bridge: running" || echo "USB serial bridge: stopped"
+[ -L /dev/ttyMiracleMCU ] && echo "Klipper MCU PTY: ready" || echo "Klipper MCU PTY: unavailable"
 [ -S /var/lib/miracle-klipper/comms/klippy.sock ] && echo "Klipper API socket: ready" || echo "Klipper API socket: not ready"
 EOF
 chmod +x /usr/local/bin/miracle-klipper-status
