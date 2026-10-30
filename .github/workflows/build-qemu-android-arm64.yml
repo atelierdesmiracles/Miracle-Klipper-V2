@@ -84,7 +84,7 @@ jobs:
         if: success()
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-user-static binfmt-support e2fsprogs qemu-utils qemu-system-arm patchelf zip
+          sudo apt-get install -y qemu-user-static binfmt-support e2fsprogs qemu-utils qemu-system-arm python3-pexpect patchelf zip
           sudo update-binfmts --enable qemu-aarch64
 
       - name: Build Alpine ARM64 guest
