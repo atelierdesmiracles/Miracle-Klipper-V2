@@ -27,10 +27,23 @@ class VmRuntimeService : Service() {
     private val controller = QemuProcessController()
     private val stopping = AtomicBoolean(false)
     @Volatile private var wakeLock: PowerManager.WakeLock? = null
+    private lateinit var printMonitor: MoonrakerPrintMonitor
+    private lateinit var completionMusic: PrintCompletionMusic
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        completionMusic = PrintCompletionMusic(this)
+        printMonitor = MoonrakerPrintMonitor(
+            onPrintCompleted = { filename ->
+                val played = completionMusic.playForCompletedPrint()
+                publishMonitorStatus(
+                    if (played) "Impression terminée : $filename — musique lancée."
+                    else "Impression terminée : $filename — musique automatique désactivée ou aucun morceau choisi."
+                )
+            },
+            onConnectionState = { state -> publishMonitorStatus(state) }
+        )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -39,6 +52,8 @@ class VmRuntimeService : Service() {
                 stopping.set(true)
                 worker.execute {
                     controller.stop()
+                    printMonitor.disconnect()
+                    completionMusic.stop()
                     running = false
                     releaseWakeLock()
                     mainHandler.post {
@@ -47,6 +62,20 @@ class VmRuntimeService : Service() {
                     }
                 }
             }
+            ACTION_CONNECT_MONITOR -> {
+                if (!running) {
+                    publishMonitorStatus("Démarrez la machine virtuelle avant de connecter Moonraker.")
+                } else {
+                    val url = intent.getStringExtra(EXTRA_MOONRAKER_URL).orEmpty()
+                    val key = intent.getStringExtra(EXTRA_MOONRAKER_API_KEY)
+                    try {
+                        printMonitor.connect(url, key)
+                    } catch (error: IllegalArgumentException) {
+                        publishMonitorStatus(error.message ?: "Adresse Moonraker invalide.")
+                    }
+                }
+            }
+            ACTION_DISCONNECT_MONITOR -> printMonitor.disconnect()
             ACTION_START -> {
                 if (controller.isRunning()) {
                     running = true
@@ -96,6 +125,7 @@ class VmRuntimeService : Service() {
             when (val result = controller.start(config, File(root, "work"))) {
                 is QemuStartResult.Started -> {
                     running = true
+                    printMonitor.connect("http://127.0.0.1:7125")
                     updateNotification("VM démarrée — attente de Moonraker et Klipper.")
                     Thread { awaitGuestServices() }.apply { name = "MiracleKlipper-Readiness"; isDaemon = true; start() }
                     Thread {
@@ -105,6 +135,8 @@ class VmRuntimeService : Service() {
                             Thread.currentThread().interrupt()
                         } finally {
                             running = false
+                            printMonitor.disconnect()
+                            completionMusic.stop()
                             releaseWakeLock()
                             if (!stopping.get()) {
                                 updateNotification("La VM s’est arrêtée. Consultez les journaux.")
@@ -120,6 +152,8 @@ class VmRuntimeService : Service() {
             }
         } catch (error: Exception) {
             running = false
+            printMonitor.disconnect()
+            completionMusic.stop()
             releaseWakeLock()
             updateNotification("Démarrage impossible : " + (error.message ?: "erreur inconnue"))
             mainHandler.post { stopSelf(startId) }
@@ -177,6 +211,8 @@ class VmRuntimeService : Service() {
     override fun onDestroy() {
         stopping.set(true)
         controller.stop()
+        printMonitor.shutdown()
+        completionMusic.stop()
         running = false
         releaseWakeLock()
         worker.shutdownNow()
@@ -219,6 +255,11 @@ class VmRuntimeService : Service() {
             .build()
     }
 
+    private fun publishMonitorStatus(message: String) {
+        monitorStatus = message
+        sendBroadcast(Intent(ACTION_MONITOR_STATUS).setPackage(packageName).putExtra(EXTRA_MONITOR_STATUS, message))
+    }
+
     private fun updateNotification(message: String) {
         getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(message))
     }
@@ -226,6 +267,14 @@ class VmRuntimeService : Service() {
     companion object {
         const val ACTION_START = "fr.atelierdesmiracles.miracleklipper.v2.START_VM"
         const val ACTION_STOP = "fr.atelierdesmiracles.miracleklipper.v2.STOP_VM"
+        const val ACTION_CONNECT_MONITOR = "fr.atelierdesmiracles.miracleklipper.v2.CONNECT_MONITOR"
+        const val ACTION_DISCONNECT_MONITOR = "fr.atelierdesmiracles.miracleklipper.v2.DISCONNECT_MONITOR"
+        const val ACTION_MONITOR_STATUS = "fr.atelierdesmiracles.miracleklipper.v2.MONITOR_STATUS"
+        const val EXTRA_MOONRAKER_URL = "moonraker_url"
+        const val EXTRA_MOONRAKER_API_KEY = "moonraker_api_key"
+        const val EXTRA_MONITOR_STATUS = "monitor_status"
+        @Volatile var monitorStatus: String = "Surveillance d'impression inactive."
+            private set
         private const val CHANNEL_ID = "miracle-klipper-vm"
         private const val NOTIFICATION_ID = 2042
         @Volatile var running: Boolean = false
