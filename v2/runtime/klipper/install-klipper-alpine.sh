@@ -159,7 +159,7 @@ enable_auto_refresh: False
 EOF
 fi
 
-mkdir -p /etc/nginx/http.d
+mkdir -p /run/nginx /etc/nginx/http.d
 cat > /etc/nginx/http.d/miracle-klipper.conf <<EOF
 server {
     listen 0.0.0.0:8080;
