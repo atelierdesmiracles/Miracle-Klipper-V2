@@ -12,6 +12,7 @@ on:
       - 'scripts/prepare-qemu-headless-recipe.sh'
       - 'scripts/build-alpine-guest.sh'
       - 'scripts/smoke-test-alpine-guest.sh'
+      - 'scripts/smoke-test-alpine-services.py'
       - 'scripts/assemble-runtime-bundle.sh'
       - 'v2/runtime/klipper/**'
 
@@ -94,6 +95,10 @@ jobs:
       - name: Boot-test Alpine kernel, initramfs and QCOW2 root disk
         if: success()
         run: bash scripts/smoke-test-alpine-guest.sh "$RUNNER_TEMP/alpine-guest"
+
+      - name: Validate Alpine firstboot, Klipper, Moonraker and Mainsail
+        if: success()
+        run: python3 scripts/smoke-test-alpine-services.py "$RUNNER_TEMP/alpine-guest"
 
       - name: Assemble complete Android runtime bundle
         if: success()
