@@ -93,6 +93,18 @@ object RuntimeBundleInstaller {
         val root = runtimeDirectory(context)
         return try {
             val manifest = RuntimeBundleManifest.parse(File(root, "manifest.json"))
+            manifest.sha256.keys.all { path -> File(root, path).isFile && File(root, path).length() > 0L } &&
+                File(root, manifest.qemuBinary).canExecute()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /** Full integrity verification is intentionally called from the VM worker thread, not the UI. */
+    fun verifyInstalled(context: Context): Boolean {
+        val root = runtimeDirectory(context)
+        return try {
+            val manifest = RuntimeBundleManifest.parse(File(root, "manifest.json"))
             manifest.sha256.all { (path, expected) ->
                 val file = File(root, path)
                 file.isFile && sha256(file).equals(expected, ignoreCase = true)
