@@ -118,7 +118,7 @@ print(f"Manifest contains {len(files)} SHA-256 entries.")
 PY
 ARCHIVE="$OUT/miracle-klipper-runtime-alpine-3.24.3-arm64.zip"
 rm -f "$ARCHIVE"
-(cd "$BUNDLE" && zip -1 -r "$ARCHIVE" . >/dev/null)
+(cd "$BUNDLE" && zip -1 -r "$ARCHIVE" bin boot disk lib licenses manifest.json >/dev/null)
 sha256sum "$ARCHIVE" > "$ARCHIVE.sha256"
 echo "Runtime bundle: $ARCHIVE"
 du -h "$ARCHIVE"
