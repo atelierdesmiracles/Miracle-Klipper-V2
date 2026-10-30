@@ -29,8 +29,7 @@ class PrintCompletionMusic(context: Context) {
         preferences.edit().putString(KEY_TRACK_URI, uri.toString()).apply()
     }
 
-    fun playForCompletedPrint(): Boolean {
-        if (!enabled) return false
+    fun playSelectedTrack(): Boolean {
         val track = selectedTrack ?: return false
         stop()
         return try {
@@ -53,6 +52,8 @@ class PrintCompletionMusic(context: Context) {
             false
         }
     }
+
+    fun playForCompletedPrint(): Boolean = enabled && playSelectedTrack()
 
     fun stop() {
         val current = player ?: return
