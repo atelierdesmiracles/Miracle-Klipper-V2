@@ -258,6 +258,42 @@ pgrep -f '[s]ocat.*org.miracle.usbserial' >/dev/null 2>&1 && echo "USB serial br
 EOF
 chmod +x /usr/local/bin/miracle-klipper-status
 
+# Expose Android USB serial over a PTY that pyserial/Klipper can open.
+cat > /usr/local/sbin/miracle-klipper-usb-serial <<'EOF'
+#!/bin/sh
+set -eu
+DEVICE="/dev/virtio-ports/org.miracle.usbserial"
+attempt=0
+while [ ! -c "$DEVICE" ] && [ "$attempt" -lt 30 ]; do
+  attempt=$((attempt + 1))
+  sleep 1
+done
+if [ ! -c "$DEVICE" ]; then
+  echo "Virtio serial endpoint is not available: $DEVICE" >&2
+  exit 1
+fi
+rm -f /dev/ttyMiracleMCU
+exec socat -d -d "PTY,link=/dev/ttyMiracleMCU,raw,echo=0,mode=660" "OPEN:$DEVICE"
+EOF
+chmod 0755 /usr/local/sbin/miracle-klipper-usb-serial
+
+cat > /etc/init.d/miracle-klipper-usb-serial <<'EOF'
+#!/sbin/openrc-run
+description="Android USB serial to Klipper PTY bridge"
+command="/usr/local/sbin/miracle-klipper-usb-serial"
+command_background=true
+pidfile="/run/miracle-klipper-usb-serial.pid"
+output_log="/var/log/miracle-klipper-usb-serial.log"
+error_log="/var/log/miracle-klipper-usb-serial.log"
+depend() {
+  need local
+  before miracle-klipper
+}
+EOF
+chmod 0755 /etc/init.d/miracle-klipper-usb-serial
+rc-update add miracle-klipper-usb-serial default
+rc-service miracle-klipper-usb-serial start || true
+
 echo "[Miracle Klipper] Stack installation complete."
 echo "Pinned Klipper: $KLIPPER_REV"
 echo "Pinned Moonraker: $MOONRAKER_REV"
