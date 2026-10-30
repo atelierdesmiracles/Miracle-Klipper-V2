@@ -6,6 +6,8 @@ on:
       - rewrite/miracle-klipper-v2
     paths:
       - 'v2/android/**'
+      - 'v2/runtime/qemu/**'
+      - 'scripts/verify-qemu-source.sh'
       - '.github/workflows/build-miracle-klipper-v2.yml'
   pull_request:
     paths:
