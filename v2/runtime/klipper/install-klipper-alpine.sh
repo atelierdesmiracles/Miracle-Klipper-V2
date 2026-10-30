@@ -114,7 +114,7 @@ fi
 if [ ! -f "$CONFIG/moonraker.conf" ]; then
   cat > "$CONFIG/moonraker.conf" <<EOF
 [server]
-host: 127.0.0.1
+host: 0.0.0.0
 port: 7125
 klippy_uds_address: $COMMS/klippy.sock
 max_upload_size: 1024
@@ -123,9 +123,12 @@ max_upload_size: 1024
 trusted_clients:
   127.0.0.0/8
   ::1/128
+  10.0.2.0/24
 cors_domains:
   localhost
   127.0.0.1
+  http://127.0.0.1
+  http://localhost
 
 [file_manager]
 enable_object_processing: True
@@ -145,7 +148,7 @@ fi
 mkdir -p /etc/nginx/http.d
 cat > /etc/nginx/http.d/miracle-klipper.conf <<EOF
 server {
-    listen 127.0.0.1:8080;
+    listen 0.0.0.0:8080;
     server_name localhost;
     root $WEBROOT;
     index index.html;
