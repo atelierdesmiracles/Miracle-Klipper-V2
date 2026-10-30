@@ -99,7 +99,12 @@ jobs:
           for apk in v2/android/app/build/outputs/apk/debug/*.apk v2/android/app/build/outputs/apk/release/*.apk; do
             test -f "$apk"
             echo "APK V2 généré: $apk"
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" | grep -F "package: name='fr.atelierdesmiracles.miracleklipper.v2'"
+            if [[ "$apk" == */debug/* ]]; then
+              expected_package="fr.atelierdesmiracles.miracleklipper.v2.debug"
+            else
+              expected_package="fr.atelierdesmiracles.miracleklipper.v2"
+            fi
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" | grep -F "package: name='$expected_package'"
           done
 
       - name: Upload V2 debug APK
