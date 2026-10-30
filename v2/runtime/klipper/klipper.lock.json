@@ -1,0 +1,12 @@
+{
+  "component": "Klipper host service",
+  "repository": "https://github.com/Klipper3d/klipper.git",
+  "revision": "ee2c6fb6b00b2b5d097ef70d0868df7d74943b51",
+  "guest": "Alpine Linux ARM64",
+  "pythonRequirements": "scripts/klippy-requirements.txt",
+  "installScript": "v2/runtime/klipper/install-klipper-alpine.sh",
+  "runtime": "isolated Python virtual environment",
+  "moonraker": "not installed in this phase",
+  "mainsail": "not installed in this phase",
+  "status": "installer implemented; Alpine guest execution and Klipper startup not yet validated"
+}
