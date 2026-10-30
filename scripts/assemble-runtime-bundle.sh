@@ -35,12 +35,10 @@ patchelf --set-rpath '$ORIGIN/../lib' "$BUNDLE/bin/qemu-system-aarch64"
 while IFS= read -r -d '' lib; do patchelf --set-rpath '$ORIGIN' "$lib"; done < <(find "$BUNDLE/lib" -type f -name '*.so*' -print0)
 
 
-if [ -d "$PREFIX/share/doc" ]; then
-  while IFS= read -r -d '' doc; do
-    rel="${doc#"$PREFIX/share/doc/"}"
-    mkdir -p "$BUNDLE/licenses/$(dirname "$rel")"
-    cp -L "$doc" "$BUNDLE/licenses/$rel"
-  done < <(find "$PREFIX/share/doc" -type f -print0)
+if [ -d "$PREFIX/share/miracle-klipper/licenses" ]; then
+  cp -a "$PREFIX/share/miracle-klipper/licenses/." "$BUNDLE/licenses/"
+elif [ -d "$PREFIX/share/doc" ]; then
+  cp -a "$PREFIX/share/doc/." "$BUNDLE/licenses/"
 fi
 
 # Validate the ELF interpreter, architecture, relocatable paths and recursive dependency closure.
