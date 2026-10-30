@@ -109,7 +109,7 @@ jobs:
 
       - name: Build release APK
         working-directory: ./app
-        run: bash ./gradlew --no-daemon assembleRelease
+        run: bash ./gradlew --no-daemon assembleRelease -x bugsnagReleaseReleaseTask
 
       - name: Upload APKs and test reports
         if: always()
