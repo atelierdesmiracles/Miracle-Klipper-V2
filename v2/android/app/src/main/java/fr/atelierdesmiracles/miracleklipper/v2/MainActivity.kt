@@ -26,6 +26,7 @@ class MainActivity : Activity() {
     private lateinit var moonrakerApiKey: EditText
     private lateinit var moonrakerStatus: TextView
     private lateinit var printMonitor: MoonrakerPrintMonitor
+    private lateinit var runtimeStatus: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,6 +82,39 @@ class MainActivity : Activity() {
                 musicStatus.text = if (started) "Lecture du morceau en cours." else "Lecture impossible : choisissez un fichier audio accessible."
             }
         })
+        content.addView(label("MACHINE VIRTUELLE LINUX", 12, 0xFF536579.toInt(), true))
+        runtimeStatus = label("", 14, 0xFF17283B.toInt(), false)
+        content.addView(runtimeStatus)
+        content.addView(Button(this).apply {
+            text = "Importer le runtime QEMU + Alpine (ZIP)"
+            setOnClickListener {
+                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "application/zip"
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                startActivityForResult(intent, REQUEST_RUNTIME_BUNDLE)
+            }
+        })
+        content.addView(Button(this).apply {
+            text = "Démarrer la machine virtuelle"
+            setOnClickListener {
+                if (!RuntimeBundleInstaller.isInstalled(this@MainActivity)) {
+                    runtimeStatus.text = "Importez d'abord un runtime vérifié."
+                } else {
+                    val intent = Intent(this@MainActivity, VmRuntimeService::class.java).setAction(VmRuntimeService.ACTION_START)
+                    if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent) else startService(intent)
+                    runtimeStatus.text = "Demande de démarrage envoyée au service Android."
+                }
+            }
+        })
+        content.addView(Button(this).apply {
+            text = "Arrêter la machine virtuelle"
+            setOnClickListener {
+                startService(Intent(this@MainActivity, VmRuntimeService::class.java).setAction(VmRuntimeService.ACTION_STOP))
+                runtimeStatus.text = "Demande d'arrêt envoyée."
+            }
+        })
         content.addView(label("CONNEXION MOONRAKER", 12, 0xFF536579.toInt(), true))
         moonrakerUrl = EditText(this).apply {
             hint = "http://adresse-imprimante:7125"
@@ -129,11 +163,26 @@ class MainActivity : Activity() {
         setContentView(root)
         updateReport()
         refreshMusicStatus()
+        refreshRuntimeStatus()
     }
 
     @Deprecated("Deprecated in Android; retained for compatibility with the current minimal Activity")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_RUNTIME_BUNDLE && resultCode == RESULT_OK) {
+            val uri = data?.data ?: return
+            runtimeStatus.text = "Import et vérification de l'archive en cours…"
+            Thread {
+                val result = RuntimeBundleInstaller.install(this, uri)
+                runOnUiThread {
+                    runtimeStatus.text = when (result) {
+                        is RuntimeInstallResult.Installed -> "Runtime installé et vérifié. QEMU : ${result.manifest.qemuBinary}. Noyau : ${result.manifest.kernel}."
+                        is RuntimeInstallResult.Failed -> "Import refusé : ${result.reason}"
+                    }
+                }
+            }.apply { name = "MiracleKlipper-RuntimeImport"; isDaemon = true; start() }
+            return
+        }
         if (requestCode == REQUEST_AUDIO_TRACK && resultCode == RESULT_OK) {
             val uri: Uri = data?.data ?: return
             try {
@@ -143,6 +192,17 @@ class MainActivity : Activity() {
             } catch (_: SecurityException) {
                 musicStatus.text = "Impossible de conserver l’accès à ce fichier audio."
             }
+        }
+    }
+
+    private fun refreshRuntimeStatus() {
+        runtimeStatus.text = buildString {
+            append(if (RuntimeBundleInstaller.isInstalled(this@MainActivity)) "Runtime importé et SHA-256 vérifié" else "Runtime non installé")
+            appendLine()
+            append("VM : ")
+            append(if (VmRuntimeService.running) "en cours d'exécution" else "arrêtée")
+            appendLine()
+            append("L'installation du runtime ne certifie pas encore le démarrage d'Alpine ni les services Klipper.")
         }
     }
 
@@ -181,14 +241,13 @@ class MainActivity : Activity() {
             appendLine("Stockage recommandé (4 Go) : " + if (readiness.storageRecommended) "OK" else "insuffisant")
             appendLine("Pré-requis VM : " + if (readiness.readyForVmPrototype) "de base OK" else "incomplets")
             appendLine()
-            appendLine("QEMU : non intégré")
-            appendLine("Alpine Linux : non intégré")
-            appendLine("Docker : non intégré")
-            appendLine("Klipper / Moonraker / Mainsail : non intégrés")
+            appendLine("Runtime QEMU/Alpine : " + if (RuntimeBundleInstaller.isInstalled(this)) "importé et vérifié" else "non installé")
+            appendLine("VM QEMU : " + if (VmRuntimeService.running) "en cours" else "arrêtée")
+            appendLine("Docker / Klipper / Moonraker / Mainsail dans la VM : à valider")
         }
     }
 
-    companion object { private const val REQUEST_AUDIO_TRACK = 4102 }
+    companion object { private const val REQUEST_AUDIO_TRACK = 4102; private const val REQUEST_RUNTIME_BUNDLE = 4103 }
 
     override fun onDestroy() {
         if (::printMonitor.isInitialized) printMonitor.shutdown()

@@ -28,11 +28,19 @@ class QemuProcessController {
                     config.qmpSocket.parentFile?.mkdirs()
                     config.serialLog.parentFile?.mkdirs()
                     config.processLog.parentFile?.mkdirs()
-                    process = ProcessBuilder(preflight.command)
+                    val builder = ProcessBuilder(preflight.command)
                         .directory(workingDirectory)
                         .redirectErrorStream(true)
                         .redirectOutput(ProcessBuilder.Redirect.appendTo(config.processLog))
-                        .start()
+                    config.libraryDirectory?.let { libraryDir ->
+                        if (libraryDir.isDirectory) {
+                            val previous = builder.environment()["LD_LIBRARY_PATH"]
+                            builder.environment()["LD_LIBRARY_PATH"] =
+                                if (previous.isNullOrBlank()) libraryDir.absolutePath
+                                else libraryDir.absolutePath + File.pathSeparator + previous
+                        }
+                    }
+                    process = builder.start()
                     QemuStartResult.Started(process!!)
                 } catch (error: IOException) {
                     QemuStartResult.Failed(error.message ?: "Échec du lancement de QEMU.")
