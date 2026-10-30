@@ -2,6 +2,8 @@ package fr.atelierdesmiracles.miracleklipper.v2
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.net.Uri
 
@@ -13,7 +15,31 @@ import android.net.Uri
 class PrintCompletionMusic(context: Context) {
     private val appContext = context.applicationContext
     private val preferences = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    private val audioManager = appContext.getSystemService(AudioManager::class.java)
     private var player: MediaPlayer? = null
+    private var focusRequest: AudioFocusRequest? = null
+
+    private val audioAttributes = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_MEDIA)
+        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+        .build()
+
+    private val focusChangeListener = AudioManager.OnAudioFocusChangeListener { change ->
+        val current = player ?: return@OnAudioFocusChangeListener
+        when (change) {
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                current.setVolume(1f, 1f)
+                if (!current.isPlaying) {
+                    try { current.start() } catch (_: IllegalStateException) { }
+                }
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                try { if (current.isPlaying) current.pause() } catch (_: IllegalStateException) { }
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> current.setVolume(0.2f, 0.2f)
+            AudioManager.AUDIOFOCUS_LOSS -> stop()
+        }
+    }
 
     val enabled: Boolean
         get() = preferences.getBoolean(KEY_ENABLED, false)
@@ -23,6 +49,7 @@ class PrintCompletionMusic(context: Context) {
 
     fun setEnabled(value: Boolean) {
         preferences.edit().putBoolean(KEY_ENABLED, value).apply()
+        if (!value) stop()
     }
 
     fun setSelectedTrack(uri: Uri) {
@@ -34,16 +61,24 @@ class PrintCompletionMusic(context: Context) {
         stop()
         return try {
             val next = MediaPlayer()
-            next.setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .build()
-            )
+            next.setAudioAttributes(audioAttributes)
             next.setDataSource(appContext, track)
             next.setOnCompletionListener { releasePlayer(it) }
             next.setOnErrorListener { mp, _, _ -> releasePlayer(mp); true }
             next.prepare()
+
+            val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(audioAttributes)
+                .setOnAudioFocusChangeListener(focusChangeListener)
+                .setWillPauseWhenDucked(true)
+                .build()
+            focusRequest = request
+            if (audioManager.requestAudioFocus(request) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                releaseAudioFocus()
+                next.release()
+                return false
+            }
+
             player = next
             next.start()
             true
@@ -56,20 +91,29 @@ class PrintCompletionMusic(context: Context) {
     fun playForCompletedPrint(): Boolean = enabled && playSelectedTrack()
 
     fun stop() {
-        val current = player ?: return
+        val current = player
         player = null
-        try {
-            if (current.isPlaying) current.stop()
-        } catch (_: IllegalStateException) {
-            // The player may already have entered an error/completed state.
-        } finally {
-            current.release()
+        if (current != null) {
+            try {
+                if (current.isPlaying) current.stop()
+            } catch (_: IllegalStateException) {
+                // The player may already have entered an error/completed state.
+            } finally {
+                current.release()
+            }
         }
+        releaseAudioFocus()
     }
 
     private fun releasePlayer(completed: MediaPlayer) {
         if (player === completed) player = null
         completed.release()
+        releaseAudioFocus()
+    }
+
+    private fun releaseAudioFocus() {
+        focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+        focusRequest = null
     }
 
     companion object {
