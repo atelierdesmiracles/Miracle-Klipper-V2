@@ -30,7 +30,7 @@ The guest is isolated from the Android host. The application forwards the Mainsa
 - Root: not required by the design.
 - Linux execution: QEMU TCG; no PRoot or Debian bootstrap.
 - Runtime import: ZIP archive with a `manifest.json` and SHA-256 hashes for every payload file.
-- QEMU: launched and owned by an Android foreground service.
+- QEMU: launched and owned by an Android foreground service; a partial wake lock keeps the CPU awake while the VM is running (battery use increases).
 - Mainsail: embedded WebView served from `http://127.0.0.1:8080`.
 - Moonraker: local endpoint `http://127.0.0.1:7125`.
 
