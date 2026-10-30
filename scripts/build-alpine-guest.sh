@@ -47,6 +47,8 @@ chroot "$ROOT" /bin/sh -euxc '
     build-base linux-headers musl-dev libffi-dev openssl-dev jpeg-dev zlib-dev e2fsprogs
   update-ca-certificates
 '
+# Do not bake the build runner DNS stub into the guest; DHCP supplies QEMU user-network DNS at boot.
+: > "$ROOT/etc/resolv.conf"
 cat > "$ROOT/etc/hostname" <<'EOF'
 miracle-klipper
 EOF
