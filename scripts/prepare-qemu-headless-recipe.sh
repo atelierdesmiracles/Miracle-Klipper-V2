@@ -92,7 +92,7 @@ termux_step_post_make_install() {
 }
 '''
 text, count = re.subn(
-    r'termux_step_configure\(\) \{.*?(?=\n\}\n\s*\ntermux_step_post_make_install)',
+    r'termux_step_configure\(\) \{.*?\n\}',
     configure.rstrip(),
     text,
     count=1,
