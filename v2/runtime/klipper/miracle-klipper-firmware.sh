@@ -68,6 +68,7 @@ case "$cmd" in
     mkdir -p "$OUT/$profile"
     make -C "$KLIPPER" PYTHON=python3 KCONFIG_CONFIG="$config" clean
     make -C "$KLIPPER" PYTHON=python3 KCONFIG_CONFIG="$config"
+    rm -f "$OUT/$profile/SHA256SUMS"
     count=0
     for ext in bin elf hex uf2; do
       if [ -f "$KLIPPER/out/klipper.$ext" ]; then
@@ -77,6 +78,7 @@ case "$cmd" in
       fi
     done
     [ "$count" -gt 0 ] || { echo "Build completed but no known firmware artifact was found" >&2; exit 1; }
+    printf '%s\n' "$(git -C "$KLIPPER" rev-parse HEAD)" > "$OUT/$profile/KLIPPER_REVISION"
     printf 'Build artifacts for %s saved in %s\n' "$profile" "$OUT/$profile"
     echo "Build only: inspect board/bootloader/communication settings before any flash."
     ;;
