@@ -29,7 +29,8 @@ data class UsbSerialDeviceInfo(
  * QEMU connects to 127.0.0.1:8023; no USB device is exposed to the LAN.
  */
 object UsbSerialBridge {
-    private const val PORT = 8023
+    @Volatile var localPort: Int = 0
+        private set
     private const val ACTION_PERMISSION_SUFFIX = ".MIRACLE_USB_SERIAL_PERMISSION"
 
     @Volatile private var appContext: Context? = null
@@ -172,8 +173,9 @@ object UsbSerialBridge {
         try {
             val socketServer = ServerSocket()
             socketServer.reuseAddress = true
-            socketServer.bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT))
+            socketServer.bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0))
             server = socketServer
+            localPort = socketServer.localPort
             thread(name = "MiracleKlipper-USBSerialServer", isDaemon = true) {
                 while (!socketServer.isClosed) {
                     try {
@@ -189,7 +191,7 @@ object UsbSerialBridge {
                     }
                 }
             }
-            report("Pont USB série prêt sur loopback 127.0.0.1:" + PORT + ".")
+            report("Pont USB série prêt sur loopback 127.0.0.1:" + localPort + ".")
         } catch (error: Exception) {
             report("Impossible d'ouvrir le pont USB série : " + (error.message ?: "erreur inconnue"))
         }
