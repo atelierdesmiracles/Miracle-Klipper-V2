@@ -132,7 +132,13 @@ for mountpoint in "$ROOT/dev" "$ROOT/proc" "$ROOT/sys"; do
   if mountpoint -q "$mountpoint"; then umount -lf "$mountpoint"; fi
 done
 mkdir -p "$OUT/boot" "$OUT/disk"
-cp -L "$KERNEL" "$OUT/boot/Image"
+if gzip -t "$KERNEL" 2>/dev/null; then
+  gzip -dc "$KERNEL" > "$OUT/boot/Image"
+elif xz -t "$KERNEL" 2>/dev/null; then
+  xz -dc "$KERNEL" > "$OUT/boot/Image"
+else
+  cp -L "$KERNEL" "$OUT/boot/Image"
+fi
 cp "$INITRD" "$OUT/boot/initramfs"
 RAW="$WORK/alpine-rootfs.raw"
 truncate -s "${DISK_SIZE_MIB}M" "$RAW"
