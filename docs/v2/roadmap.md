@@ -214,3 +214,28 @@ the QEMU + Alpine guest is bootable.
 Klipper is deliberately not started with the neutral template configuration.
 Moonraker and Mainsail can start independently; real printer operation still
 requires a correct printer.cfg and validated USB serial access.
+
+
+## KIAUH-inspired operations layer — 30 October 2026
+
+Reviewed upstream KIAUH at
+`dw-0/kiauh@d3e538de7b3163abe27fdf8116a60716d4db31ce` (GPL-3.0).
+Its component/service separation, independent virtual environments, safe
+update approach, backups, instance data layout, service status and reverse
+proxy patterns inform this guest implementation.
+
+Added:
+- `v2/runtime/klipper/miracle-klipper-manager.sh`: status, start, stop,
+  restart, runtime checks, log access, timestamped backup with SHA-256 and
+  guarded restore with pre-restore backup.
+- `docs/v2/kiauh-adaptation.md`: architecture mapping, excluded assumptions
+  and GPL provenance boundary.
+
+This is not a port of KIAUH. In particular, systemd, sudo, Debian apt package
+logic and Linux user-group changes are not used. Android remains the lifecycle
+supervisor. Firmware build/flash, multiple printer instances and optional
+extensions remain separate features pending validation of USB, build tools,
+storage and security.
+
+The CI workflow syntax-checks the Alpine installer and operations manager;
+this still does not replace execution inside a bootable Alpine guest.
