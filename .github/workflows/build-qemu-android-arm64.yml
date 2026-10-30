@@ -58,7 +58,7 @@ jobs:
             while IFS= read -r -d '' package; do
               filename="$(basename "$package" | tr ':' '_')"
               cp "$package" "qemu-output/$filename"
-            done < <(find termux-packages/output -type f \\( -name '*.deb' -o -name '*.tar.xz' \\) -print0)
+            done < <(find termux-packages/output -type f \( -name '*.deb' -o -name '*.tar.xz' \) -print0)
           fi
           if [ -n "$(find qemu-output -type f ! -name 'SHA256SUMS' -print -quit)" ]; then
             (cd qemu-output && sha256sum * > SHA256SUMS)
