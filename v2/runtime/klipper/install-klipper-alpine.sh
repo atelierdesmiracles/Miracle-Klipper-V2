@@ -253,6 +253,7 @@ set +e
 pgrep -f '[k]lippy/klippy.py' >/dev/null 2>&1 && echo "Klipper: running" || echo "Klipper: stopped"
 pgrep -f '[m]oonraker/moonraker.py' >/dev/null 2>&1 && echo "Moonraker: running" || echo "Moonraker: stopped"
 pgrep -f '[n]ginx: master process' >/dev/null 2>&1 && echo "Mainsail/Nginx: running" || echo "Mainsail/Nginx: stopped"
+pgrep -f '[s]ocat.*org.miracle.usbserial' >/dev/null 2>&1 && echo "USB serial bridge: running" || echo "USB serial bridge: stopped"
 [ -S /var/lib/miracle-klipper/comms/klippy.sock ] && echo "Klipper API socket: ready" || echo "Klipper API socket: not ready"
 EOF
 chmod +x /usr/local/bin/miracle-klipper-status
