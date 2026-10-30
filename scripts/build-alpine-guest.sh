@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 ALPINE_VERSION="${ALPINE_VERSION:-3.24.3}"
+ALPINE_BRANCH="${ALPINE_BRANCH:-3.24}"
 DISK_SIZE_MIB="${DISK_SIZE_MIB:-3072}"
 OUT="${1:-$PWD/alpine-guest-output}"
 WORK="${RUNNER_TEMP:-/tmp}/miracle-alpine-$$"
 ROOT="$WORK/rootfs"
 ARCHIVE="$WORK/alpine-minirootfs.tar.gz"
-BASE_URL="https://dl-cdn.alpinelinux.org/alpine/v$ALPINE_VERSION"
+BASE_URL="https://dl-cdn.alpinelinux.org/alpine/v$ALPINE_BRANCH"
 mkdir -p "$OUT" "$WORK"
 cleanup() {
   for mountpoint in "$ROOT/dev" "$ROOT/proc" "$ROOT/sys"; do
