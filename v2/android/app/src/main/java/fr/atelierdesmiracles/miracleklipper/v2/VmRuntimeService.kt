@@ -7,6 +7,8 @@ import android.app.Service
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.os.Handler
+import android.os.Looper
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -20,6 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 class VmRuntimeService : Service() {
     private val worker = Executors.newSingleThreadExecutor()
+    private val mainHandler = Handler(Looper.getMainLooper())
     private val controller = QemuProcessController()
     private val stopping = AtomicBoolean(false)
 
@@ -35,8 +38,10 @@ class VmRuntimeService : Service() {
                 worker.execute {
                     controller.stop()
                     running = false
-                    stopForeground(STOP_FOREGROUND_REMOVE)
-                    stopSelf(startId)
+                    mainHandler.post {
+                        stopForeground(STOP_FOREGROUND_REMOVE)
+                        stopSelf(startId)
+                    }
                 }
             }
             ACTION_START -> {
@@ -93,7 +98,7 @@ class VmRuntimeService : Service() {
                             running = false
                             if (!stopping.get()) {
                                 updateNotification("La VM s’est arrêtée. Consultez les journaux.")
-                                stopSelf(startId)
+                                mainHandler.post { stopSelf(startId) }
                             }
                         }
                     }.apply { name = "MiracleKlipper-QemuMonitor"; isDaemon = true; start() }
