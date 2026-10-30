@@ -12,7 +12,7 @@ command -v timeout >/dev/null || { echo "timeout command is required" >&2; exit 
 # Use init=/bin/sh to prove the kernel, initramfs, virtio block and root filesystem
 # boot without starting the first-boot package installation or changing the image.
 set +e
-printf 'echo MIRACLE_ALPINE_ROOTFS_BOOT_OK\nexit\n' | timeout 75s "$QEMU" \
+printf 'mount -t devtmpfs devtmpfs /dev 2>/dev/null || true\nmodprobe virtio_console 2>/dev/null || true\nsleep 1\ntest -e /dev/virtio-ports/org.miracle.usbserial && echo MIRACLE_VIRTIO_SERIAL_OK\necho MIRACLE_ALPINE_ROOTFS_BOOT_OK\nexit\n' | timeout 75s "$QEMU" \
   -machine virt -cpu cortex-a57 -m 1024 -smp 2 \
   -kernel "$ASSETS/boot/Image" \
   -initrd "$ASSETS/boot/initramfs" \
@@ -21,6 +21,9 @@ printf 'echo MIRACLE_ALPINE_ROOTFS_BOOT_OK\nexit\n' | timeout 75s "$QEMU" \
   -device virtio-blk-device,drive=rootdisk \
   -netdev user,id=net0 \
   -device virtio-net-device,netdev=net0 \
+  -chardev socket,id=usbserial,host=127.0.0.1,port=8023,server=off,reconnect=5 \
+  -device virtio-serial-device,id=virtio-serial0 \
+  -device virtserialport,bus=virtio-serial0.0,chardev=usbserial,name=org.miracle.usbserial \
   -display none -monitor none -serial stdio -no-reboot > "$LOG" 2>&1
 qemu_status=$?
 set -e
