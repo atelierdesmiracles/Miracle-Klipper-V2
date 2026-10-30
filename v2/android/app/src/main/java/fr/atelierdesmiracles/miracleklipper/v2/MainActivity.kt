@@ -12,6 +12,7 @@ import android.net.Uri
 import android.graphics.Typeface
 import android.view.Gravity
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -21,10 +22,24 @@ class MainActivity : Activity() {
     private lateinit var report: TextView
     private lateinit var musicStatus: TextView
     private lateinit var completionMusic: PrintCompletionMusic
+    private lateinit var moonrakerUrl: EditText
+    private lateinit var moonrakerApiKey: EditText
+    private lateinit var moonrakerStatus: TextView
+    private lateinit var printMonitor: MoonrakerPrintMonitor
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         completionMusic = PrintCompletionMusic(this)
+        printMonitor = MoonrakerPrintMonitor(
+            onPrintCompleted = { filename ->
+                runOnUiThread {
+                    val played = completionMusic.playForCompletedPrint()
+                    moonrakerStatus.text = if (played) "Impression terminée : $filename — musique lancée."
+                    else "Impression terminée : $filename — musique automatique désactivée ou aucun morceau choisi."
+                }
+            },
+            onConnectionState = { state -> runOnUiThread { moonrakerStatus.text = state } }
+        )
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(22), dp(28), dp(22), dp(24))
@@ -65,6 +80,35 @@ class MainActivity : Activity() {
                 val started = completionMusic.playSelectedTrack()
                 musicStatus.text = if (started) "Lecture du morceau en cours." else "Lecture impossible : choisissez un fichier audio accessible."
             }
+        })
+        content.addView(label("CONNEXION MOONRAKER", 12, 0xFF536579.toInt(), true))
+        moonrakerUrl = EditText(this).apply {
+            hint = "http://adresse-imprimante:7125"
+            singleLine = true
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_URI
+        }
+        content.addView(moonrakerUrl)
+        moonrakerApiKey = EditText(this).apply {
+            hint = "Clé API (facultative)"
+            singleLine = true
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        content.addView(moonrakerApiKey)
+        moonrakerStatus = label("Non connecté à Moonraker", 14, 0xFF17283B.toInt(), false)
+        content.addView(moonrakerStatus)
+        content.addView(Button(this).apply {
+            text = "Connecter à Moonraker"
+            setOnClickListener {
+                try {
+                    printMonitor.connect(moonrakerUrl.text.toString(), moonrakerApiKey.text.toString())
+                } catch (error: IllegalArgumentException) {
+                    moonrakerStatus.text = error.message ?: "Adresse Moonraker invalide"
+                }
+            }
+        })
+        content.addView(Button(this).apply {
+            text = "Déconnecter Moonraker"
+            setOnClickListener { printMonitor.disconnect() }
         })
         content.addView(label("ÉTAT DU PROTOTYPE", 12, 0xFF536579.toInt(), true))
         report = label("", 15, 0xFF17283B.toInt(), false).apply {
@@ -109,7 +153,7 @@ class MainActivity : Activity() {
             appendLine()
             append(if (track == null) "Aucun morceau sélectionné" else "Morceau sélectionné : " + (track.lastPathSegment ?: track.toString()))
             appendLine()
-            append("La lecture automatique sera reliée à Moonraker après intégration du suivi d’impression.")
+            append("La détection de fin d’impression utilise la connexion Moonraker ci-dessous.")
         }
     }
 
@@ -147,6 +191,7 @@ class MainActivity : Activity() {
     companion object { private const val REQUEST_AUDIO_TRACK = 4102 }
 
     override fun onDestroy() {
+        if (::printMonitor.isInitialized) printMonitor.shutdown()
         if (::completionMusic.isInitialized) completionMusic.stop()
         super.onDestroy()
     }
