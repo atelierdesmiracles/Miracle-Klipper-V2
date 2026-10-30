@@ -33,7 +33,7 @@ done < <(find "$LIBDIR" -maxdepth 1 \( -type f -o -type l \) \( -name '*.so' -o 
 patchelf --set-rpath '$ORIGIN/../lib' "$BUNDLE/bin/qemu-system-aarch64"
 while IFS= read -r -d '' lib; do patchelf --set-rpath '$ORIGIN' "$lib"; done < <(find "$BUNDLE/lib" -type f -name '*.so*' -print0)
 
-if [ -d "$PREFIX/share/qemu" ]; then cp -a "$PREFIX/share/qemu" "$BUNDLE/share-qemu"; fi
+
 if [ -d "$PREFIX/share/doc" ]; then
   while IFS= read -r -d '' doc; do
     rel="${doc#"$PREFIX/share/doc/"}"
@@ -119,7 +119,7 @@ print(f"Manifest contains {len(files)} SHA-256 entries.")
 PY
 ARCHIVE="$OUT/miracle-klipper-runtime-alpine-3.24.3-arm64.zip"
 rm -f "$ARCHIVE"
-(cd "$WORK" && zip -1 -r "$ARCHIVE" bundle >/dev/null)
+(cd "$BUNDLE" && zip -1 -r "$ARCHIVE" . >/dev/null)
 sha256sum "$ARCHIVE" > "$ARCHIVE.sha256"
 echo "Runtime bundle: $ARCHIVE"
 du -h "$ARCHIVE"
