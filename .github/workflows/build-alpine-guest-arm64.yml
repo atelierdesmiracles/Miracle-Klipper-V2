@@ -6,6 +6,7 @@ on:
     paths:
       - 'scripts/build-alpine-guest.sh'
       - 'scripts/smoke-test-alpine-guest.sh'
+      - 'scripts/smoke-test-alpine-services.py'
       - 'v2/runtime/klipper/**'
       - '.github/workflows/build-alpine-guest-arm64.yml'
 concurrency:
@@ -31,6 +32,8 @@ jobs:
         run: sudo bash scripts/build-alpine-guest.sh "$RUNNER_TEMP/alpine-guest"
       - name: Boot-test Alpine kernel, initramfs and QCOW2 root disk
         run: bash scripts/smoke-test-alpine-guest.sh "$RUNNER_TEMP/alpine-guest"
+      - name: Validate Alpine firstboot, Klipper, Moonraker and Mainsail
+        run: python3 scripts/smoke-test-alpine-services.py "$RUNNER_TEMP/alpine-guest"
       - name: Verify generated guest assets
         run: |
           test -s "$RUNNER_TEMP/alpine-guest/boot/Image"
