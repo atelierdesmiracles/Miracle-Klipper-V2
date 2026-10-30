@@ -14,6 +14,8 @@ data class RuntimeBundleManifest(
     val qemuBinary: String,
     val kernel: String,
     val initrd: String,
+    val diskImage: String,
+    val diskFormat: String,
     val diskSizeMb: Int,
     val memoryMb: Int,
     val cpuCount: Int,
@@ -41,15 +43,18 @@ data class RuntimeBundleManifest(
                 qemuBinary = safeRelativePath(json.getString("qemuBinary")),
                 kernel = safeRelativePath(json.getString("kernel")),
                 initrd = safeRelativePath(json.getString("initrd")),
+                diskImage = safeRelativePath(json.getString("diskImage")),
+                diskFormat = json.optString("diskFormat", "raw"),
                 diskSizeMb = json.optInt("diskSizeMb", 8192),
                 memoryMb = json.optInt("memoryMb", 1024),
                 cpuCount = json.optInt("cpuCount", 2),
                 kernelAppend = json.optString("kernelAppend", "console=ttyAMA0,115200 earlycon=pl011,0x09000000 rdinit=/init"),
                 sha256 = hashes
             )
-            require(manifest.qemuBinary in hashes && manifest.kernel in hashes && manifest.initrd in hashes) {
-                "Le manifeste doit authentifier QEMU, le noyau et l'initramfs."
+            require(manifest.qemuBinary in hashes && manifest.kernel in hashes && manifest.initrd in hashes && manifest.diskImage in hashes) {
+                "Le manifeste doit authentifier QEMU, le noyau, l'initramfs et le disque invité."
             }
+            require(manifest.diskFormat in setOf("raw", "qcow2")) { "Format de disque invité non pris en charge." }
             require(manifest.diskSizeMb in 512..131072) { "Taille du disque runtime invalide." }
             require(manifest.memoryMb in 256..16384) { "Mémoire runtime invalide." }
             require(manifest.cpuCount in 1..8) { "Nombre de processeurs runtime invalide." }
@@ -147,7 +152,7 @@ object RuntimeBundleInstaller {
             }
             val qemu = File(staging, manifest.qemuBinary)
             require(qemu.setExecutable(true, true) || qemu.canExecute()) { "Impossible de rendre QEMU exécutable." }
-            require(File(staging, manifest.kernel).length() > 0L && File(staging, manifest.initrd).length() > 0L) {
+            require(File(staging, manifest.kernel).length() > 0L && File(staging, manifest.initrd).length() > 0L && File(staging, manifest.diskImage).length() > 0L) {
                 "Le noyau ou l'initramfs est vide."
             }
             backup.deleteRecursively()
