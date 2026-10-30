@@ -248,3 +248,6 @@ echo "Pinned Klipper: $KLIPPER_REV"
 echo "Pinned Moonraker: $MOONRAKER_REV"
 echo "Pinned Mainsail: $MAINSAIL_VERSION"
 echo "Start with: miracle-klipper-start"
+
+# KIAUH-inspired operational manager
+install -m 0755 "$(dirname "$0")/miracle-klipper-manager.sh" /usr/local/bin/miracle-klipper-manager
