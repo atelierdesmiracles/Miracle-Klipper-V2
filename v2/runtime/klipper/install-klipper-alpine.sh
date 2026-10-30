@@ -277,9 +277,7 @@ else
   fi
 fi
 
-if [ -x /etc/init.d/miracle-klipper-usb-serial ]; then
-  rc-service miracle-klipper-usb-serial start || true
-fi
+# The USB bridge is enabled in OpenRC's default runlevel and starts independently.
 
 if grep -Eq '^[[:space:]]*\[mcu\][[:space:]]*$' "$CONFIG/printer.cfg" &&
    grep -Eq '^[[:space:]]*\[printer\][[:space:]]*$' "$CONFIG/printer.cfg"; then
@@ -360,7 +358,7 @@ pidfile="/run/miracle-klipper-usb-serial.pid"
 output_log="/var/log/miracle-klipper-usb-serial.log"
 error_log="/var/log/miracle-klipper-usb-serial.log"
 depend() {
-  need local
+  after networking
 }
 EOF
 chmod 0755 /etc/init.d/miracle-klipper-usb-serial
