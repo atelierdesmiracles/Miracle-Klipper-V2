@@ -177,7 +177,7 @@ object RuntimeBundleInstaller {
         return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
-    private fun RuntimeBundleManifest.Companion.validateArchivePath(value: String): String {
+    private fun validateArchivePath(value: String): String {
         require(value.isNotBlank() && !value.startsWith("/") && !value.contains('\\')) { "Entrée ZIP invalide." }
         val normalized = value.removeSuffix("/")
         require(normalized.isNotBlank() && normalized.split("/").none { it.isBlank() || it == "." || it == ".." }) {
