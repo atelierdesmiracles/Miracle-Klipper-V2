@@ -95,6 +95,59 @@ stop_services() {
   /usr/local/bin/miracle-klipper-stop
 }
 
+
+check_docker_kernel() {
+  config_file=""
+  if [ -r /proc/config.gz ] && command -v zcat >/dev/null 2>&1; then
+    config_file="/tmp/miracle-klipper-kernel-config"
+    zcat /proc/config.gz > "$config_file"
+  elif [ -r "/boot/config-$(uname -r)" ]; then
+    config_file="/boot/config-$(uname -r)"
+  fi
+  if [ -z "$config_file" ]; then
+    echo "[WARN] Kernel configuration is not exposed; Docker prerequisites cannot be pre-checked."
+    return 0
+  fi
+  missing=0
+  for option in CONFIG_NAMESPACES CONFIG_CGROUPS CONFIG_CGROUP_PIDS CONFIG_CGROUP_DEVICE CONFIG_OVERLAY_FS CONFIG_VETH CONFIG_BRIDGE CONFIG_NETFILTER CONFIG_NF_NAT; do
+    if grep -q "^$option=y$" "$config_file"; then
+      printf '[OK] %s\n' "$option"
+    else
+      printf '[MISSING] %s\n' "$option"
+      missing=$((missing + 1))
+    fi
+  done
+  [ "$missing" -eq 0 ] || {
+    echo "Docker installation is blocked: the guest kernel is missing required features."
+    return 1
+  }
+}
+
+docker_install() {
+  check_docker_kernel || return 1
+  apk add --no-cache docker docker-cli-compose
+  rc-update add docker default
+  rc-service docker start
+  docker version
+  docker info
+}
+
+docker_start() {
+  check_docker_kernel || return 1
+  rc-service docker start
+  docker info
+}
+
+docker_stop() {
+  rc-service docker stop
+}
+
+docker_status() {
+  rc-service docker status || true
+  docker version 2>/dev/null || true
+  docker info 2>/dev/null || true
+}
+
 case "${1:-status}" in
   status)
     component_status klipper '[k]lippy/klippy.py' || true
@@ -106,6 +159,10 @@ case "${1:-status}" in
   stop) stop_services ;;
   restart) stop_services; sleep 1; start_services ;;
   check) check_runtime ;;
+  docker-install) docker_install ;;
+  docker-start) docker_start ;;
+  docker-stop) docker_stop ;;
+  docker-status) docker_status ;;
   backup) backup_data ;;
   restore)
     [ "$#" -eq 2 ] || { echo "Usage: $0 restore /path/to/backup.tar.gz" >&2; exit 2; }
@@ -122,7 +179,7 @@ case "${1:-status}" in
     esac
     ;;
   *)
-    echo "Usage: $0 {status|start|stop|restart|check|backup|restore ARCHIVE|logs [klipper|moonraker|nginx|all]}" >&2
+    echo "Usage: $0 {status|start|stop|restart|check|docker-install|docker-start|docker-stop|docker-status|backup|restore ARCHIVE|logs [klipper|moonraker|nginx|all]}" >&2
     exit 2
     ;;
 esac
