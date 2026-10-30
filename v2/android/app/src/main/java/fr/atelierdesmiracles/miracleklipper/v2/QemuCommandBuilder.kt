@@ -50,8 +50,18 @@ object QemuCommandBuilder {
         if (missing.isNotEmpty()) return QemuPreflightResult.Missing(missing)
 
         val socketPath = config.qmpSocket.absolutePath
-        if (socketPath.any { it == ',' || it == '\n' || it == '\r' }) {
-            return QemuPreflightResult.Invalid("Le chemin du socket QMP contient un caractère interdit.")
+        if (socketPath.any { it == ',' || it == '\n' || it == '\r' } ||
+            socketPath.toByteArray(Charsets.UTF_8).size > 100
+        ) {
+            return QemuPreflightResult.Invalid("Le chemin du socket QMP est invalide ou trop long (100 octets maximum).")
+        }
+        val diskPath = config.diskImage.absolutePath
+        if (diskPath.any { it == ',' || it == '\n' || it == '\r' }) {
+            return QemuPreflightResult.Invalid("Le chemin du disque contient un caractère interdit.")
+        }
+        val serialPath = config.serialLog.absolutePath
+        if (serialPath.any { it == ',' || it == '\n' || it == '\r' }) {
+            return QemuPreflightResult.Invalid("Le chemin du journal série contient un caractère interdit.")
         }
 
         val command = listOf(
