@@ -111,7 +111,7 @@ class VmRuntimeService : Service() {
         } catch (error: Exception) {
             running = false
             updateNotification("Démarrage impossible : " + (error.message ?: "erreur inconnue"))
-            stopSelf(startId)
+            mainHandler.post { stopSelf(startId) }
         }
     }
 
