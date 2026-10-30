@@ -112,7 +112,7 @@ class VmRuntimeService : Service() {
 
 
     private fun awaitGuestServices() {
-        val deadline = System.currentTimeMillis() + 180_000L
+        val deadline = System.currentTimeMillis() + 900_000L
         while (!stopping.get() && controller.isRunning() && System.currentTimeMillis() < deadline) {
             var connection: HttpURLConnection? = null
             try {
@@ -130,10 +130,16 @@ class VmRuntimeService : Service() {
                             updateNotification("Alpine + Moonraker + Klipper prêts. Mainsail : http://127.0.0.1:8080")
                             return
                         }
-                        "disconnected" -> updateNotification("Alpine et Moonraker accessibles. Klipper attend la configuration MCU.")
-                        else -> updateNotification("Moonraker accessible. État Klipper : $state")
+                        "disconnected" -> {
+                            updateNotification("Alpine et Moonraker accessibles. Klipper attend une configuration MCU valide.")
+                            return
+                        }
+                        "error", "shutdown" -> {
+                            updateNotification("Moonraker accessible, Klipper en état " + state + ". Consultez klippy.log.")
+                            return
+                        }
+                        else -> updateNotification("Moonraker accessible. Démarrage Klipper : " + state)
                     }
-                    return
                 }
             } catch (_: Exception) {
                 // The guest may still be booting or installing its first-boot stack.
