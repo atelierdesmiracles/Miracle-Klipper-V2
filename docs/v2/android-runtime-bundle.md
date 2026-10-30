@@ -24,11 +24,12 @@ Exemple de manifeste :
   "diskSizeMb": 8192,
   "memoryMb": 1024,
   "cpuCount": 2,
-  "kernelAppend": "console=ttyAMA0,115200 earlycon=pl011,0x09000000 rdinit=/init",
+  "kernelAppend": "console=ttyAMA0,115200 root=/dev/vda rootfstype=ext4 rootwait rw",
   "files": {
     "bin/qemu-system-aarch64": "SHA256_HEX",
     "boot/Image": "SHA256_HEX",
-    "boot/initramfs": "SHA256_HEX"
+    "boot/initramfs": "SHA256_HEX",
+    "disk/rootfs.qcow2": "SHA256_HEX"
   }
 }
 ```
@@ -40,11 +41,12 @@ Toutes les entrées de fichiers exécutables ou images invitées doivent être l
 1. L'utilisateur importe l'archive.
 2. L'application extrait dans un répertoire de staging et vérifie toutes les empreintes.
 3. Le runtime actif est remplacé atomiquement.
-4. L'utilisateur démarre explicitement la VM.
-5. Un service Android de premier plan possède le processus QEMU.
-6. Le disque invité est créé une seule fois et n'est jamais tronqué.
-7. Les journaux QEMU et console série sont conservés dans le stockage privé.
+4. Au premier démarrage seulement, le disque QCOW2 Alpine fourni est copié vers le stockage persistant privé de l’application. Les mises à jour du runtime ne remplacent jamais ce disque utilisateur.
+5. L'utilisateur démarre explicitement la VM.
+6. Un service Android de premier plan possède le processus QEMU.
+7. Le disque invité est conservé entre les mises à jour et n'est jamais tronqué.
+8. Les journaux QEMU et console série sont conservés dans le stockage privé.
 
 ## Limites à ne pas masquer
 
-Ce contrat et le service Android intègrent le cycle de vie hôte de QEMU. Ils ne prouvent pas que le noyau/initramfs fourni démarre Alpine, que Docker fonctionne dans le noyau invité, ni que Klipper accède à un MCU USB. Le bundle de production doit être construit avec QEMU Bionic relocatable, sa fermeture complète de bibliothèques, un noyau/initramfs Alpine testés et des licences tierces. Le test final reste un démarrage sur téléphone ARM64 physique.
+Le pipeline de build produit une base Alpine ARM64 avec noyau virt, initramfs, disque ext4 QCOW2 et OpenRC. Le service Android transfère les ports Mainsail (8080) et Moonraker (7125) vers loopback et vérifie l’état de Moonraker/Klipper. Ces éléments doivent encore passer la CI puis un test sur téléphone ARM64 physique. Docker et l’accès MCU USB ne sont pas encore validés. Le bundle de production doit être construit avec QEMU Bionic relocatable, sa fermeture complète de bibliothèques, un noyau/initramfs Alpine testés et des licences tierces. Le test final reste un démarrage sur téléphone ARM64 physique.
