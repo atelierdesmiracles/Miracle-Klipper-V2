@@ -11,6 +11,7 @@ data class QemuGuestConfig(
     val kernelImage: File,
     val initrdImage: File,
     val diskImage: File,
+    val diskFormat: String = "raw",
     val qmpSocket: File,
     val serialLog: File,
     val processLog: File = File(serialLog.parentFile, "qemu-process.log"),
@@ -31,6 +32,9 @@ object QemuCommandBuilder {
     fun build(config: QemuGuestConfig): QemuPreflightResult {
         if (config.memoryMb < 256 || config.memoryMb > 16384) {
             return QemuPreflightResult.Invalid("La mémoire VM doit être comprise entre 256 et 16384 Mo.")
+        }
+        if (config.diskFormat !in setOf("raw", "qcow2")) {
+            return QemuPreflightResult.Invalid("Le format du disque doit être raw ou qcow2.")
         }
         if (config.cpuCount !in 1..8) {
             return QemuPreflightResult.Invalid("Le nombre de vCPU doit être compris entre 1 et 8.")
@@ -76,7 +80,7 @@ object QemuCommandBuilder {
             "-kernel", config.kernelImage.absolutePath,
             "-initrd", config.initrdImage.absolutePath,
             "-append", config.append,
-            "-drive", "if=none,id=vdisk,format=raw,file=${config.diskImage.absolutePath}",
+            "-drive", "if=none,id=vdisk,format=${config.diskFormat},file=${config.diskImage.absolutePath}",
             "-device", "virtio-blk-device,drive=vdisk",
             "-netdev", "user,id=net0,hostfwd=tcp:127.0.0.1:8080-:8080,hostfwd=tcp:127.0.0.1:7125-:7125",
             "-device", "virtio-net-device,netdev=net0",
