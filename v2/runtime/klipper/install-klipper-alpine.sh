@@ -14,7 +14,7 @@ case "$KLIPPER_REV" in *[!0-9a-fA-F]*|'') echo "Invalid Klipper commit SHA" >&2;
 [ "\${#KLIPPER_REV}" -eq 40 ] || { echo "Klipper revision must be a full 40-character SHA" >&2; exit 2; }
 
 mkdir -p "$BASE" "$BASE/venvs" "$DATA/config" "$DATA/logs" "$DATA/gcodes" "$DATA/comms" "$DATA/state"
-exec > >(tee -a "$LOG") 2>&1
+exec >>"$LOG" 2>&1
 
 echo "[Miracle Klipper] Installing Alpine host dependencies"
 apk add --no-cache ca-certificates git python3 py3-pip build-base linux-headers musl-dev libffi-dev openssl-dev
