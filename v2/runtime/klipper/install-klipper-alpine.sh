@@ -254,6 +254,8 @@ echo "Start with: miracle-klipper-start"
 
 # KIAUH-inspired operational manager
 install -m 0755 "$(dirname "$0")/miracle-klipper-manager.sh" /usr/local/bin/miracle-klipper-manager
+install -m 0755 "$(dirname "$0")/miracle-klipper-instances.sh" /usr/local/bin/miracle-klipper-instances
+install -m 0755 "$(dirname "$0")/miracle-klipper-firmware.sh" /usr/local/bin/miracle-klipper-firmware
 
 cat > /etc/init.d/miracle-klipper <<'EOF'
 #!/sbin/openrc-run
