@@ -78,7 +78,7 @@ object QemuCommandBuilder {
             "-append", config.append,
             "-drive", "if=none,id=vdisk,format=raw,file=${config.diskImage.absolutePath}",
             "-device", "virtio-blk-device,drive=vdisk",
-            "-netdev", "user,id=net0",
+            "-netdev", "user,id=net0,hostfwd=tcp:127.0.0.1:8080-:8080,hostfwd=tcp:127.0.0.1:7125-:7125",
             "-device", "virtio-net-device,netdev=net0",
             "-display", "none",
             "-serial", "file:${config.serialLog.absolutePath}",
