@@ -27,6 +27,9 @@ class QemuProcessController {
                         return QemuStartResult.Failed("Impossible de créer le répertoire de travail.")
                     }
                     config.qmpSocket.parentFile?.mkdirs()
+                    if (config.qmpSocket.exists() && !config.qmpSocket.delete()) {
+                        return QemuStartResult.Failed("Impossible de supprimer l'ancien socket QMP.")
+                    }
                     config.serialLog.parentFile?.mkdirs()
                     config.processLog.parentFile?.mkdirs()
                     val builder = ProcessBuilder(preflight.command)
@@ -62,14 +65,16 @@ class QemuProcessController {
     fun stop(gracefulTimeoutMs: Long = 30_000L): Boolean {
         require(gracefulTimeoutMs in 0L..120_000L) { "Délai d'arrêt invité invalide." }
         val running = process ?: return true
+        val socketFile = qmpSocket
         if (!running.isAlive) {
             process = null
             qmpSocket = null
+            socketFile?.delete()
             return true
         }
 
         var powerdownRequested = false
-        val socketPath = qmpSocket?.absolutePath
+        val socketPath = socketFile?.absolutePath
         if (!socketPath.isNullOrBlank()) {
             try {
                 QmpClient(socketPath).use { qmp ->
@@ -111,6 +116,7 @@ class QemuProcessController {
         }
         process = null
         qmpSocket = null
+        socketFile?.delete()
         return cleanShutdown
     }
 
