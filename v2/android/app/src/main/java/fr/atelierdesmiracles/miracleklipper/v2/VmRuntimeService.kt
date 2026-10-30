@@ -51,8 +51,8 @@ class VmRuntimeService : Service() {
         try {
             val root = RuntimeBundleInstaller.runtimeDirectory(this)
             val manifest = RuntimeBundleManifest.parse(File(root, "manifest.json"))
-            val disk = File(filesDir, "miracle-vm/guest.raw")
-            when (val provision = QemuDiskManager.ensureRawDisk(disk, manifest.diskSizeMb)) {
+            val disk = File(filesDir, "miracle-vm/guest.${manifest.diskFormat}")
+            when (val provision = QemuDiskManager.ensureSeededDisk(disk, File(root, manifest.diskImage))) {
                 is DiskProvisionResult.Invalid -> error(provision.reason)
                 is DiskProvisionResult.Failed -> error(provision.reason)
                 is DiskProvisionResult.Ready -> Unit
@@ -65,6 +65,7 @@ class VmRuntimeService : Service() {
                 kernelImage = kernel,
                 initrdImage = initrd,
                 diskImage = disk,
+                diskFormat = manifest.diskFormat,
                 qmpSocket = File(filesDir, "miracle-vm/run/qmp.sock"),
                 serialLog = File(filesDir, "miracle-vm/logs/serial.log"),
                 processLog = File(filesDir, "miracle-vm/logs/qemu.log"),
