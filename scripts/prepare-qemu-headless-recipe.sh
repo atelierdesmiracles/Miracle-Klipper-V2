@@ -12,7 +12,7 @@ text = path.read_text()
 
 text, count = re.subn(
     r'^TERMUX_PKG_DEPENDS=.*$',
-    'TERMUX_PKG_DEPENDS="dtc, glib, libpixman, libslirp, qemu-common, resolv-conf, zlib, zstd"',
+    'TERMUX_PKG_DEPENDS="dtc, glib, libandroid-shmem, libpixman, libslirp, qemu-common, resolv-conf, zlib, zstd"',
     text,
     count=1,
     flags=re.M,
