@@ -75,6 +75,8 @@ The complete production build is orchestrated by `.github/workflows/build-qemu-a
 
 On first boot, OpenRC starts the Miracle Klipper bootstrap. The guest installs pinned Klipper and Moonraker revisions, installs the pinned Mainsail release, configures nginx and enables the local service manager.
 
+Moonraker is configured automatically by `miracle-klipper-configure-moonraker` whenever the stack starts. It creates the managed `/var/lib/miracle-klipper/config/moonraker.conf`, points Moonraker at the Klipper Unix socket, selects the persistent data directory, enables the Mainsail localhost/CORS and QEMU guest trusted-client entries, and disables the systemd-specific machine provider for Alpine/OpenRC. The generator is idempotent: it refreshes only files carrying its managed marker and preserves a hand-written `moonraker.conf`; a custom file is checked for its required `[server]` and `klippy_uds_address` entries. Moonraker is exposed to Android through the loopback-forwarded port 7125, not directly to the public network.
+
 The initial `printer.cfg` is deliberately hardware-neutral. Before starting Klipper, configure the actual MCU serial path, kinematics, stepper limits, thermistors, heaters and safety limits for the specific printer. The project must never generate invented heater or motion settings.
 
 KIAUH is used as an architectural reference for component installation, Python virtual environments, service operations, backups and instance management. Miracle Klipper uses Alpine/OpenRC-native scripts; it does not copy KIAUH's Debian/systemd assumptions.
