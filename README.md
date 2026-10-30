@@ -102,4 +102,4 @@ A V2 release is not considered operational until all of the following are demons
 5. Connect to a real printer MCU and verify stable serial communication.
 6. Complete a controlled test print with working emergency stop and thermal safeguards.
 
-See [V2 runtime bundle contract](docs/v2/android-runtime-bundle.md), [USB serial bridge guide](docs/v2/usb-serial-bridge.md), [KIAUH adaptation notes](docs/v2/kiauh-adaptation.md) and [project roadmap](docs/v2/roadmap.md).
+See [V2 runtime bundle contract](docs/v2/android-runtime-bundle.md), [USB serial bridge guide](docs/v2/usb-serial-bridge.md), [optional Docker guide](docs/v2/docker-optional.md), [KIAUH adaptation notes](docs/v2/kiauh-adaptation.md) and [project roadmap](docs/v2/roadmap.md).
