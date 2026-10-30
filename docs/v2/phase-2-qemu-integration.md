@@ -71,3 +71,27 @@ The new `scripts/audit-qemu-android-package.sh` is wired into the QEMU
 workflow. It rejects a Termux absolute RUNPATH and common desktop/audio
 dependencies. This is a packaging gate, not a runtime test. The next build
 must pass this audit before APK bundling work proceeds.
+
+
+## Android application audio — print completion music
+
+The headless QEMU guest runtime and the Android application's media playback
+are separate concerns. Miracle Klipper must retain native Android audio
+capability even when QEMU is built without guest audio devices or Linux audio
+backends.
+
+Required product behavior:
+- Provide an Android-native music player in Miracle Klipper.
+- Allow the user to select/manage local audio tracks and playback volume.
+- Subscribe to Moonraker print lifecycle notifications.
+- When a print reaches the completed state, play the configured completion
+  track (or playlist) through Android's media/audio APIs.
+- Do not require ALSA, PulseAudio, JACK, or an audio device inside the Alpine
+  guest to play the completion music.
+- Respect Android audio focus, user mute/volume settings, and app lifecycle.
+- Do not start music for cancelled, failed, or merely paused prints.
+- Keep this feature independent of QEMU's `--audio-drv-list` setting.
+
+This is an application feature requirement; it is not yet implemented or
+validated. The current QEMU package's audio-related shared libraries are not
+evidence that Android-native playback works.
