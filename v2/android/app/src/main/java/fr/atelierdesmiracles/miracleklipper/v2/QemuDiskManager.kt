@@ -7,6 +7,41 @@ sealed class DiskProvisionResult {
     data class Ready(val file: File, val created: Boolean) : DiskProvisionResult()
     data class Invalid(val reason: String) : DiskProvisionResult()
     data class Failed(val reason: String) : DiskProvisionResult()
+    /** Copies the runtime seed disk once and preserves the writable guest disk on later upgrades. */
+    fun ensureSeededDisk(destination: File, seedImage: File): DiskProvisionResult {
+        if (!seedImage.isFile || seedImage.length() <= 0L) {
+            return DiskProvisionResult.Invalid("L'image disque initiale est absente ou vide.")
+        }
+        return try {
+            val parent = destination.parentFile
+                ?: return DiskProvisionResult.Invalid("Le disque doit avoir un répertoire parent.")
+            if (!parent.exists() && !parent.mkdirs()) {
+                return DiskProvisionResult.Failed("Impossible de créer le répertoire du disque.")
+            }
+            if (destination.exists()) {
+                if (!destination.isFile || destination.length() <= 0L) {
+                    return DiskProvisionResult.Invalid("Le disque persistant existant est invalide.")
+                }
+                return DiskProvisionResult.Ready(destination, false)
+            }
+            val temporary = File(parent, destination.name + ".installing")
+            temporary.delete()
+            java.io.FileInputStream(seedImage).use { input ->
+                java.io.FileOutputStream(temporary).use { output ->
+                    input.copyTo(output, 1024 * 1024)
+                    output.fd.sync()
+                }
+            }
+            if (!temporary.renameTo(destination)) {
+                temporary.delete()
+                return DiskProvisionResult.Failed("Impossible d'activer le disque invité initial.")
+            }
+            DiskProvisionResult.Ready(destination, true)
+        } catch (error: Exception) {
+            DiskProvisionResult.Failed(error.message ?: "Impossible de préparer le disque invité.")
+        }
+    }
+
 }
 
 /**
