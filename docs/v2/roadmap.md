@@ -112,3 +112,21 @@ Do not describe these as operational until their gates pass:
 - USB passthrough;
 - Klipper controlling a real printer;
 - Mainsail controlling a real printer through Moonraker.
+
+## Phase 2 implementation status — 30 October 2026
+
+Implemented in the V2 branch:
+- QEMU command builder and process adapter.
+- QMP local-socket client.
+- Persistent sparse RAW guest disk provisioning.
+- Preflight validation for QEMU artifacts, memory/vCPU limits, QMP socket path length, and device-file paths.
+- Pinned QEMU 11.1.2 source archive with SHA-256 verification in CI.
+- Android ARM64 debug build and JVM tests passed on commit `22190995b3ae9cb7b9a5545de587cb79a6e05fb6`.
+
+Still blocked on the Phase 2 acceptance gate:
+- No Android/Bionic QEMU executable has been built or packaged yet.
+- No Alpine ARM64 kernel/initramfs/rootfs has been integrated.
+- No physical-phone boot test has been performed.
+- The current CI success proves Kotlin unit tests and APK packaging only; it does not prove a bootable VM.
+
+The QEMU source verifier checks the upstream release archive against the pinned digest. It is a source-integrity check, not a QEMU compilation or runtime test.
