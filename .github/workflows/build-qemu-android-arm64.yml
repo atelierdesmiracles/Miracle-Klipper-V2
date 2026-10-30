@@ -20,8 +20,10 @@ jobs:
     steps:
       - name: Checkout Miracle Klipper V2
         uses: actions/checkout@v4
+
       - name: Verify Docker availability
         run: docker version
+
       - name: Checkout pinned Termux package builder
         env:
           TERMUX_PACKAGES_COMMIT: 0e1306a2df4492ce5113fe220b65c4c4a4bf6e2d
@@ -29,6 +31,7 @@ jobs:
           git clone --filter=blob:none https://github.com/termux/termux-packages.git termux-packages
           git -C termux-packages checkout "$TERMUX_PACKAGES_COMMIT"
           test "$(git -C termux-packages rev-parse HEAD)" = "$TERMUX_PACKAGES_COMMIT"
+
       - name: Build QEMU AArch64 system package
         working-directory: termux-packages
         run: |
@@ -36,18 +39,22 @@ jobs:
           mkdir -p ../qemu-output
           ./scripts/run-docker.sh ./build-package.sh -f -I qemu-system-x86-64
           docker image inspect ghcr.io/termux/package-builder --format '{{.Id}}' > ../qemu-output/builder-image-id.txt
-          docker image inspect ghcr.io/termux/package-builder --format '{{join .RepoDigests "\\n"}}' > ../qemu-output/builder-image-digests.txt
+          docker image inspect ghcr.io/termux/package-builder --format '{{join .RepoDigests "\n"}}' > ../qemu-output/builder-image-digests.txt
           git rev-parse HEAD > ../qemu-output/termux-packages-commit.txt
+
       - name: Collect QEMU package outputs
         if: always()
         run: |
           mkdir -p qemu-output
           if [ -d termux-packages/output ]; then
-            find termux-packages/output -maxdepth 1 -type f \\( -name '*.deb' -o -name '*.tar.xz' \\) -exec cp {} qemu-output/ \\;
+            for package in termux-packages/output/*.deb termux-packages/output/*.tar.xz; do
+              [ -f "$package" ] && cp "$package" qemu-output/
+            done
           fi
           if [ -n "$(find qemu-output -type f ! -name 'SHA256SUMS' -print -quit)" ]; then
-            sha256sum qemu-output/* > qemu-output/SHA256SUMS
+            (cd qemu-output && sha256sum * > SHA256SUMS)
           fi
+
       - name: Upload QEMU package artifacts and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
