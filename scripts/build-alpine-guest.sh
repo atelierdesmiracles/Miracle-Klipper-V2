@@ -88,6 +88,13 @@ cat > "$ROOT/usr/local/sbin/miracle-klipper-firstboot" <<'EOF'
 #!/bin/sh
 set -eu
 INSTALLER=/root/miracle-klipper/install-klipper-alpine.sh
+attempt=0
+while [ "$attempt" -lt 60 ]; do
+  if ip route | grep -q "^default " && grep -q "^nameserver " /etc/resolv.conf; then break; fi
+  attempt=$((attempt + 1))
+  sleep 2
+done
+if [ "$attempt" -ge 60 ]; then echo "DHCP/DNS did not become ready before first boot install" >&2; fi
 if [ ! -x /usr/local/bin/miracle-klipper-start ] || [ ! -x /opt/miracle-klipper/venvs/moonraker/bin/python ]; then
   /bin/sh "$INSTALLER"
 fi
