@@ -107,6 +107,11 @@ KERNEL="$(find "$ROOT/boot" -maxdepth 1 -type f -name 'vmlinuz-virt' -print -qui
 [ -n "$KERNEL" ] || { echo "Alpine linux-virt did not provide /boot/vmlinuz-virt" >&2; ls -la "$ROOT/boot"; exit 1; }
 KVER="$(find "$ROOT/lib/modules" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -n1)"
 [ -n "$KVER" ] || { echo "No installed Alpine kernel modules found" >&2; exit 1; }
+cat > "$ROOT/etc/modules" <<EOF
+virtio_console
+virtio_blk
+virtio_net
+EOF
 chroot "$ROOT" /sbin/mkinitfs -o /boot/initramfs-miracle "$KVER"
 INITRD="$ROOT/boot/initramfs-miracle"
 [ -s "$INITRD" ] || { echo "mkinitfs did not produce an initramfs" >&2; exit 1; }
