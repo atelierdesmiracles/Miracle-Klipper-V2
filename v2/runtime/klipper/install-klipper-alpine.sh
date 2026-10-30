@@ -252,7 +252,29 @@ else
     /opt/miracle-klipper/moonraker/moonraker/moonraker.py \
     -c "$CONFIG/moonraker.conf" -d "$DATA" \
     >>"$LOGS/moonraker-process.log" 2>&1 &
-  echo "$!" > "$DATA/state/moonraker.pid"
+  moonraker_pid="$!"
+  echo "$moonraker_pid" > "$DATA/state/moonraker.pid"
+  # Do not report a successful stack start while Moonraker is crashing or unreachable.
+  ready=0
+  attempt=0
+  while [ "$attempt" -lt 30 ]; do
+    if ! kill -0 "$moonraker_pid" 2>/dev/null; then
+      echo "ERROR: Moonraker exited during startup" >&2
+      tail -n 120 "$LOGS/moonraker.log" "$LOGS/moonraker-process.log" 2>/dev/null || true
+      exit 1
+    fi
+    if wget -q -T 2 -O /dev/null http://127.0.0.1:7125/server/info; then
+      ready=1
+      break
+    fi
+    attempt=$((attempt + 1))
+    sleep 1
+  done
+  if [ "$ready" -ne 1 ]; then
+    echo "ERROR: Moonraker did not become ready on port 7125" >&2
+    tail -n 120 "$LOGS/moonraker.log" "$LOGS/moonraker-process.log" 2>/dev/null || true
+    exit 1
+  fi
 fi
 
 if [ -x /etc/init.d/miracle-klipper-usb-serial ]; then
@@ -339,7 +361,6 @@ output_log="/var/log/miracle-klipper-usb-serial.log"
 error_log="/var/log/miracle-klipper-usb-serial.log"
 depend() {
   need local
-  before miracle-klipper
 }
 EOF
 chmod 0755 /etc/init.d/miracle-klipper-usb-serial
