@@ -13,7 +13,7 @@ class QemuCommandBuilderTest {
             File(root, "qemu-system-aarch64"),
             File(root, "Image"),
             File(root, "initramfs"),
-            File(root, "guest.qcow2"),
+            File(root, "guest.raw"),
             File(root, "qmp.sock"),
             File(root, "serial.log")
         )
@@ -48,6 +48,31 @@ class QemuCommandBuilderTest {
         val disk = File(root, "disk").apply { writeText("disk") }
         val result = QemuCommandBuilder.build(QemuGuestConfig(
             binary, kernel, initrd, disk, File(root, "bad,path/qmp.sock"), File(root, "serial.log")
+        ))
+        assertTrue(result is QemuPreflightResult.Invalid)
+    }
+
+    @Test fun rejectsQmpSocketPathLongerThanUnixSocketLimit() {
+        val root = Files.createTempDirectory("mk-qemu-long-socket").toFile()
+        val binary = File(root, "qemu").apply { writeText("binary"); setExecutable(true) }
+        val kernel = File(root, "kernel").apply { writeText("kernel") }
+        val initrd = File(root, "initrd").apply { writeText("initrd") }
+        val disk = File(root, "disk").apply { writeText("disk") }
+        val longSocket = File(root, "s".repeat(120))
+        val result = QemuCommandBuilder.build(QemuGuestConfig(
+            binary, kernel, initrd, disk, longSocket, File(root, "serial.log")
+        ))
+        assertTrue(result is QemuPreflightResult.Invalid)
+    }
+
+    @Test fun rejectsCommaInRawDiskPath() {
+        val root = Files.createTempDirectory("mk-qemu-disk-path").toFile()
+        val binary = File(root, "qemu").apply { writeText("binary"); setExecutable(true) }
+        val kernel = File(root, "kernel").apply { writeText("kernel") }
+        val initrd = File(root, "initrd").apply { writeText("initrd") }
+        val disk = File(root, "bad,disk.raw").apply { writeText("disk") }
+        val result = QemuCommandBuilder.build(QemuGuestConfig(
+            binary, kernel, initrd, disk, File(root, "qmp.sock"), File(root, "serial.log")
         ))
         assertTrue(result is QemuPreflightResult.Invalid)
     }
