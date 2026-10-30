@@ -42,13 +42,15 @@ jobs:
           docker image inspect ghcr.io/termux/package-builder --format '{{join .RepoDigests "\n"}}' > ../qemu-output/builder-image-digests.txt
           git rev-parse HEAD > ../qemu-output/termux-packages-commit.txt
 
-      - name: Collect QEMU package outputs
+      - name: Collect and normalize QEMU package outputs
         if: always()
         run: |
           mkdir -p qemu-output
           if [ -d termux-packages/output ]; then
             for package in termux-packages/output/*.deb termux-packages/output/*.tar.xz; do
-              [ -f "$package" ] && cp "$package" qemu-output/
+              [ -f "$package" ] || continue
+              filename="$(basename "$package" | tr ':' '_')"
+              cp "$package" "qemu-output/$filename"
             done
           fi
           if [ -n "$(find qemu-output -type f ! -name 'SHA256SUMS' -print -quit)" ]; then
