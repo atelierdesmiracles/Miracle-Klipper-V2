@@ -13,7 +13,7 @@ command -v timeout >/dev/null || { echo "timeout command is required" >&2; exit 
 # boot without starting the first-boot package installation or changing the image.
 set +e
 printf 'mount -t devtmpfs devtmpfs /dev 2>/dev/null || true\nmodprobe virtio_console 2>/dev/null || true\nsleep 1\ntest -e /dev/virtio-ports/org.miracle.usbserial && echo MIRACLE_VIRTIO_SERIAL_OK\necho MIRACLE_ALPINE_ROOTFS_BOOT_OK\nexit\n' | timeout 75s "$QEMU" \
-  -machine virt -cpu cortex-a57 -m 1024 -smp 2 \
+  -machine virt -cpu cortex-a57 -m 1024 -smp 2 -snapshot \
   -kernel "$ASSETS/boot/Image" \
   -initrd "$ASSETS/boot/initramfs" \
   -append "console=ttyAMA0,115200 root=/dev/vda rootfstype=ext4 rootwait rw init=/bin/sh" \
