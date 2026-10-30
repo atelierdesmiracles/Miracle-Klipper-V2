@@ -42,7 +42,7 @@ if [ -d "$LICENSE_SOURCE" ]; then
     rel="${doc#"$LICENSE_SOURCE/"}"
     mkdir -p "$BUNDLE/licenses/$(dirname "$rel")"
     cp -L "$doc" "$BUNDLE/licenses/$rel"
-  done < <(find "$LICENSE_SOURCE" -type f -o -type l -print0)
+  done < <(find "$LICENSE_SOURCE" \\( -type f -o -type l \\) -print0)
 fi
 
 # Validate the ELF interpreter, architecture, relocatable paths and recursive dependency closure.
