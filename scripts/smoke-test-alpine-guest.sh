@@ -15,7 +15,7 @@ import pexpect
 assets, log_path, qemu = sys.argv[1:]
 command = [
     qemu,
-    "-machine", "virt",
+    "-machine", "virt,acpi=on",
     "-cpu", "cortex-a57",
     "-m", "1024",
     "-smp", "2",
