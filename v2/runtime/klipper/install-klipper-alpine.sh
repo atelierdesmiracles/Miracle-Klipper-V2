@@ -22,7 +22,7 @@ exec >>"$LOGS/install-stack.log" 2>&1
 
 echo "[Miracle Klipper] Installing Alpine dependencies"
 apk add --no-cache ca-certificates curl git nginx openrc socat acpid python3 py3-pip py3-virtualenv unzip procps \
-  build-base linux-headers musl-dev libffi-dev openssl-dev jpeg-dev zlib-dev
+  build-base linux-headers python3-dev musl-dev libffi-dev openssl-dev jpeg-dev zlib-dev
 
 # Handle QEMU's ACPI power-button event for a clean guest shutdown.
 mkdir -p /etc/acpi/events
