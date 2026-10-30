@@ -21,7 +21,8 @@ PREFIX="$(find "$PKGROOT" -type d -path '*/data/data/com.termux/files/usr' -prin
 QEMU="$(find "$PREFIX" -type f -name qemu-system-aarch64 -print -quit)"
 [ -n "$QEMU" ] || { echo "qemu-system-aarch64 executable not found in extracted packages" >&2; exit 1; }
 install -m 0755 "$QEMU" "$BUNDLE/bin/qemu-system-aarch64"
-LIBDIR="$PREFIX/lib"
+LIBDIR="$PREFIX/share/miracle-klipper/lib"
+[ -d "$LIBDIR" ] || LIBDIR="$PREFIX/lib"
 [ -d "$LIBDIR" ] || { echo "Termux library directory missing: $LIBDIR" >&2; exit 1; }
 while IFS= read -r -d '' lib; do
   name="$(basename "$lib")"
