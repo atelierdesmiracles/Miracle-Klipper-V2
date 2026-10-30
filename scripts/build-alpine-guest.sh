@@ -109,7 +109,7 @@ chroot "$ROOT" /bin/sh -euxc '
   rc-update add local default
   rc-update add miracle-klipper default
 '
-KERNEL="$(find "$ROOT/boot" -maxdepth 1 -type f -name 'vmlinuz-virt' -print -quit)"
+KERNEL="$(find "$ROOT/boot" -maxdepth 1 \\( -type f -o -type l \\) -name 'vmlinuz-virt' -print -quit)"
 [ -n "$KERNEL" ] || { echo "Alpine linux-virt did not provide /boot/vmlinuz-virt" >&2; ls -la "$ROOT/boot"; exit 1; }
 KVER="$(find "$ROOT/lib/modules" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -n1)"
 [ -n "$KVER" ] || { echo "No installed Alpine kernel modules found" >&2; exit 1; }
@@ -127,7 +127,7 @@ for mountpoint in "$ROOT/dev" "$ROOT/proc" "$ROOT/sys"; do
   if mountpoint -q "$mountpoint"; then umount -lf "$mountpoint"; fi
 done
 mkdir -p "$OUT/boot" "$OUT/disk"
-cp "$KERNEL" "$OUT/boot/Image"
+cp -L "$KERNEL" "$OUT/boot/Image"
 cp "$INITRD" "$OUT/boot/initramfs"
 RAW="$WORK/alpine-rootfs.raw"
 truncate -s "${DISK_SIZE_MIB}M" "$RAW"
