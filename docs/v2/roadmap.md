@@ -170,3 +170,47 @@ No Moonraker installer is part of the current Klipper-only deliverable.
 
 Only after Phase 4B passes: install pinned Mainsail assets and connect the UI
 through a loopback-only reverse proxy.
+
+
+## Complete printer stack integration — 30 October 2026
+
+The guest installer now provisions the three application layers together while
+keeping their responsibilities separate:
+
+- Klipper: pinned source, dedicated Python virtual environment and persistent
+  printer configuration/logs/G-code/communication directories.
+- Moonraker: pinned source, its own Python virtual environment, HTTP API on
+  guest loopback port 7125, Klipper Unix-socket endpoint, file manager, history
+  and Mainsail announcements.
+- Mainsail: pinned release archive verified by SHA-256 and served by nginx.
+- nginx: guest-loopback listener on port 8080; forwards API and WebSocket paths
+  to Moonraker. Moonraker is not exposed on guest network interfaces by default.
+- Lifecycle commands: `miracle-klipper-start`, `miracle-klipper-stop`,
+  `miracle-klipper-status`.
+- Persistent data: `/var/lib/miracle-klipper`; software and virtual environments
+  are under `/opt/miracle-klipper`.
+
+The install script is `v2/runtime/klipper/install-klipper-alpine.sh`; exact
+component pins and service endpoints are recorded in
+`v2/runtime/klipper/klipper.lock.json`.
+
+### Deployment decision
+
+For this first Alpine guest integration, Klipper and Moonraker run as isolated
+native Python processes and Mainsail is served by nginx. Docker is not yet
+required to boot the printer stack. The architecture's Docker deployment is
+deferred until the custom guest kernel demonstrates working namespaces,
+cgroups, OverlayFS, bridge/veth and netfilter/NAT. This avoids making the
+printer services depend on unverified kernel capabilities.
+
+### Current validation boundary
+
+CI checks shell syntax, JSON lock-file validity and consistency of pinned
+versions, in addition to the Android build and unit tests. These checks do
+not execute Alpine, install Python wheels in the guest, boot Klipper, or prove
+Moonraker/Mainsail connectivity. Those remain runtime acceptance tests after
+the QEMU + Alpine guest is bootable.
+
+Klipper is deliberately not started with the neutral template configuration.
+Moonraker and Mainsail can start independently; real printer operation still
+requires a correct printer.cfg and validated USB serial access.
