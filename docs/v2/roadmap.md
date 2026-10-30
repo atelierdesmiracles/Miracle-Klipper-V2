@@ -130,3 +130,43 @@ Still blocked on the Phase 2 acceptance gate:
 - The current CI success proves Kotlin unit tests and APK packaging only; it does not prove a bootable VM.
 
 The QEMU source verifier checks the upstream release archive against the pinned digest. It is a source-integrity check, not a QEMU compilation or runtime test.
+
+
+## Klipper-first delivery order — 30 October 2026
+
+The service rollout is split into independent acceptance gates. Klipper is
+implemented and validated as a standalone guest service before Moonraker is
+introduced; Mainsail follows after the API layer.
+
+### Phase 4A — Klipper standalone (current work)
+
+- Install only the official, pinned Klipper source inside the Alpine ARM64 guest.
+- Create an isolated Python virtual environment and install the requirements
+  from that exact source revision.
+- Verify the fetched commit, run `pip check`, compile the Klipper Python
+  modules, and validate the Klipper command entry point.
+- Keep `printer_data` persistent and separate from application binaries.
+- Provide explicit start, stop and status commands.
+- Never invent printer hardware settings. Klipper startup is blocked until
+  `printer.cfg` contains user-provided `[mcu]` and `[printer]` sections.
+- Do not install, configure, launch or depend on Moonraker or Mainsail in this
+  phase.
+
+Acceptance gate:
+- Alpine guest booted on the target runtime.
+- Installer succeeds idempotently and records the exact commit.
+- Klipper Python environment passes dependency and source checks.
+- With a validated simulator/dummy configuration, Klipper starts, creates its
+  API socket, reports readiness, and stops cleanly.
+- Real printer control remains blocked until USB serial integration is tested.
+
+### Phase 4B — Moonraker API
+
+Only after Phase 4A passes: install a pinned Moonraker revision, configure its
+Unix socket connection to Klipper, and validate HTTP/WebSocket state updates.
+No Moonraker installer is part of the current Klipper-only deliverable.
+
+### Phase 4C — Mainsail interface
+
+Only after Phase 4B passes: install pinned Mainsail assets and connect the UI
+through a loopback-only reverse proxy.
