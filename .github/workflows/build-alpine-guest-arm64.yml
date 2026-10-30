@@ -1,0 +1,39 @@
+name: Build Alpine ARM64 guest for Miracle Klipper V2
+on:
+  workflow_dispatch:
+  push:
+    branches: [rewrite/miracle-klipper-v2]
+    paths:
+      - 'scripts/build-alpine-guest.sh'
+      - 'v2/runtime/klipper/**'
+      - '.github/workflows/build-alpine-guest-arm64.yml'
+permissions:
+  contents: read
+jobs:
+  build-alpine-guest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - name: Install ARM64 chroot and image tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static binfmt-support e2fsprogs qemu-utils
+          sudo update-binfmts --enable qemu-aarch64
+      - name: Build Alpine ARM64 kernel, initramfs and persistent root disk
+        run: sudo bash scripts/build-alpine-guest.sh "$RUNNER_TEMP/alpine-guest"
+      - name: Verify generated guest assets
+        run: |
+          test -s "$RUNNER_TEMP/alpine-guest/boot/Image"
+          test -s "$RUNNER_TEMP/alpine-guest/boot/initramfs"
+          test -s "$RUNNER_TEMP/alpine-guest/disk/rootfs.qcow2"
+          qemu-img check "$RUNNER_TEMP/alpine-guest/disk/rootfs.qcow2"
+          grep -q 'Alpine version: 3.24.3' "$RUNNER_TEMP/alpine-guest/alpine-build-info.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: miracle-klipper-alpine-arm64-guest
+          path: ${{ runner.temp }}/alpine-guest/
+          if-no-files-found: error
+          retention-days: 30
