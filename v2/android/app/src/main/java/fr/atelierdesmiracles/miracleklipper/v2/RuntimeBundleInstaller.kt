@@ -113,7 +113,7 @@ object RuntimeBundleInstaller {
                         val entry = zip.nextEntry ?: break
                         entries++
                         require(entries <= MAX_ENTRIES) { "L'archive contient trop de fichiers." }
-                        val relative = RuntimeBundleManifest.run { validateArchivePath(entry.name) }
+                        val relative = validateArchivePath(entry.name)
                         val output = File(staging, relative)
                         require(output.canonicalPath.startsWith(staging.canonicalPath + File.separator)) {
                             "L'archive tente de sortir du répertoire d'installation."
