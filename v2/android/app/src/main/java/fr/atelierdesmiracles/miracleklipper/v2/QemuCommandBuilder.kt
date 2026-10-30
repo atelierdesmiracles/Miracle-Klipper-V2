@@ -17,7 +17,8 @@ data class QemuGuestConfig(
     val expectedQemuSha256: String? = null,
     val memoryMb: Int = 1024,
     val cpuCount: Int = 2,
-    val append: String = "console=ttyAMA0,115200 earlycon=pl011,0x09000000 rdinit=/init"
+    val append: String = "console=ttyAMA0,115200 earlycon=pl011,0x09000000 rdinit=/init",
+    val libraryDirectory: File? = null
 )
 
 sealed class QemuPreflightResult {
