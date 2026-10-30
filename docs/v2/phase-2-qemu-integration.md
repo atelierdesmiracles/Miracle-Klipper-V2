@@ -67,10 +67,24 @@ integration**:
   packaged or verified.
 - No execution test has been performed on a physical Android phone.
 
-The new `scripts/audit-qemu-android-package.sh` is wired into the QEMU
-workflow. It rejects a Termux absolute RUNPATH and common desktop/audio
-dependencies. This is a packaging gate, not a runtime test. The next build
-must pass this audit before APK bundling work proceeds.
+The current pipeline separates the pre-bundle package audit from final
+runtime relocation:
+
+- `scripts/audit-qemu-android-package.sh` verifies the raw package's Android
+  Bionic interpreter, AArch64 machine type and absence of desktop/audio
+  dependencies. A Termux build-prefix RUNPATH is reported as informational at
+  this stage because the executable has not yet been moved into the app bundle.
+- `scripts/assemble-runtime-bundle.sh` stages the executable and its shared
+  libraries, patches the QEMU binary to use `$ORIGIN/../lib`, patches bundled
+  libraries to use `$ORIGIN`, and recursively verifies the ELF dependency
+  closure against Android's public system-library allowlist.
+- The runtime ZIP is produced only if the relocation and dependency-closure
+  checks pass.
+
+This still does not prove execution on a physical Android phone. The final
+runtime must pass the Alpine kernel/initramfs/root-disk boot test, the full
+first-boot Klipper/Moonraker/Mainsail test under host QEMU, and then a physical
+ARM64 Android execution test.
 
 
 ## Android application audio — print completion music
