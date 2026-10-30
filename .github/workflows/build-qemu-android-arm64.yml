@@ -11,6 +11,7 @@ on:
       - 'scripts/verify-qemu-source.sh'
       - 'scripts/prepare-qemu-headless-recipe.sh'
       - 'scripts/build-alpine-guest.sh'
+      - 'scripts/smoke-test-alpine-guest.sh'
       - 'scripts/assemble-runtime-bundle.sh'
       - 'v2/runtime/klipper/**'
 
@@ -83,12 +84,16 @@ jobs:
         if: success()
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-user-static binfmt-support e2fsprogs qemu-utils patchelf zip
+          sudo apt-get install -y qemu-user-static binfmt-support e2fsprogs qemu-utils qemu-system-arm patchelf zip
           sudo update-binfmts --enable qemu-aarch64
 
       - name: Build Alpine ARM64 guest
         if: success()
         run: sudo bash scripts/build-alpine-guest.sh "$RUNNER_TEMP/alpine-guest"
+
+      - name: Boot-test Alpine kernel, initramfs and QCOW2 root disk
+        if: success()
+        run: bash scripts/smoke-test-alpine-guest.sh "$RUNNER_TEMP/alpine-guest"
 
       - name: Assemble complete Android runtime bundle
         if: success()
