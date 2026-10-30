@@ -11,10 +11,12 @@ import android.content.Intent
 import android.net.Uri
 import android.graphics.Typeface
 import android.view.Gravity
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.Spinner
 import android.widget.TextView
 import java.util.Locale
 
@@ -27,10 +29,15 @@ class MainActivity : Activity() {
     private lateinit var moonrakerStatus: TextView
     private lateinit var printMonitor: MoonrakerPrintMonitor
     private lateinit var runtimeStatus: TextView
+    private lateinit var usbStatus: TextView
+    private lateinit var usbDeviceSpinner: Spinner
+    private lateinit var usbBaudRate: EditText
+    private var usbDevices: List<UsbSerialDeviceInfo> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         completionMusic = PrintCompletionMusic(this)
+        UsbSerialBridge.initialize(applicationContext) { message -> runOnUiThread { if (::usbStatus.isInitialized) usbStatus.text = message } }
         printMonitor = MoonrakerPrintMonitor(
             onPrintCompleted = { filename ->
                 runOnUiThread {
@@ -81,6 +88,49 @@ class MainActivity : Activity() {
                 val started = completionMusic.playSelectedTrack()
                 musicStatus.text = if (started) "Lecture du morceau en cours." else "Lecture impossible : choisissez un fichier audio accessible."
             }
+        })
+        content.addView(label("CONNEXION USB — CARTE ÉLECTRONIQUE", 12, 0xFF536579.toInt(), true))
+        usbStatus = label("Pont USB série prêt sur loopback. Scannez les périphériques OTG.", 14, 0xFF17283B.toInt(), false)
+        content.addView(usbStatus)
+        usbDeviceSpinner = Spinner(this)
+        content.addView(usbDeviceSpinner)
+        usbBaudRate = EditText(this).apply {
+            hint = "Débit série (baud)"
+            setText("250000")
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            isSingleLine = true
+        }
+        content.addView(usbBaudRate)
+        content.addView(Button(this).apply {
+            text = "Scanner les périphériques USB"
+            setOnClickListener {
+                usbDevices = UsbSerialBridge.scan()
+                val labels = if (usbDevices.isEmpty()) listOf("Aucun périphérique série compatible") else usbDevices.map { it.label }
+                usbDeviceSpinner.adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_item, labels).apply {
+                    setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                }
+                usbStatus.text = if (usbDevices.isEmpty()) "Aucun adaptateur CDC/ACM, FTDI, CP210x ou CH340 détecté." else usbDevices.size.toString() + " périphérique(s) série détecté(s)."
+            }
+        })
+        content.addView(Button(this).apply {
+            text = "Connecter la carte sélectionnée"
+            setOnClickListener {
+                val selected = usbDevices.getOrNull(usbDeviceSpinner.selectedItemPosition)
+                if (selected == null) {
+                    usbStatus.text = "Scannez et sélectionnez d'abord un périphérique USB."
+                } else {
+                    try {
+                        val baud = usbBaudRate.text.toString().toIntOrNull() ?: 250000
+                        UsbSerialBridge.connect(selected.deviceName, baud)
+                    } catch (error: Exception) {
+                        usbStatus.text = error.message ?: "Connexion USB impossible."
+                    }
+                }
+            }
+        })
+        content.addView(Button(this).apply {
+            text = "Déconnecter la carte USB"
+            setOnClickListener { UsbSerialBridge.disconnect() }
         })
         content.addView(label("MACHINE VIRTUELLE LINUX", 12, 0xFF536579.toInt(), true))
         runtimeStatus = label("", 14, 0xFF17283B.toInt(), false)
@@ -257,6 +307,7 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         if (::printMonitor.isInitialized) printMonitor.shutdown()
         if (::completionMusic.isInitialized) completionMusic.stop()
+        UsbSerialBridge.clearStatusListener()
         super.onDestroy()
     }
 
