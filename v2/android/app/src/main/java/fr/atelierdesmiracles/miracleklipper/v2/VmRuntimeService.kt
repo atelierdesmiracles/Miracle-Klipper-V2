@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.IBinder
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -25,6 +26,7 @@ class VmRuntimeService : Service() {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val controller = QemuProcessController()
     private val stopping = AtomicBoolean(false)
+    @Volatile private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -38,6 +40,7 @@ class VmRuntimeService : Service() {
                 worker.execute {
                     controller.stop()
                     running = false
+                    releaseWakeLock()
                     mainHandler.post {
                         stopForeground(STOP_FOREGROUND_REMOVE)
                         stopSelf(startId)
@@ -45,9 +48,14 @@ class VmRuntimeService : Service() {
                 }
             }
             ACTION_START -> {
-                if (controller.isRunning()) return START_NOT_STICKY
+                if (controller.isRunning()) {
+                    running = true
+                    acquireWakeLock()
+                    return START_NOT_STICKY
+                }
                 stopping.set(false)
                 startForeground(NOTIFICATION_ID, notification("Préparation du runtime Miracle Klipper…"))
+                acquireWakeLock()
                 worker.execute { startVm(startId) }
             }
             else -> stopSelf(startId)
@@ -97,6 +105,7 @@ class VmRuntimeService : Service() {
                             Thread.currentThread().interrupt()
                         } finally {
                             running = false
+                            releaseWakeLock()
                             if (!stopping.get()) {
                                 updateNotification("La VM s’est arrêtée. Consultez les journaux.")
                                 mainHandler.post { stopSelf(startId) }
@@ -111,6 +120,7 @@ class VmRuntimeService : Service() {
             }
         } catch (error: Exception) {
             running = false
+            releaseWakeLock()
             updateNotification("Démarrage impossible : " + (error.message ?: "erreur inconnue"))
             mainHandler.post { stopSelf(startId) }
         }
@@ -168,8 +178,26 @@ class VmRuntimeService : Service() {
         stopping.set(true)
         controller.stop()
         running = false
+        releaseWakeLock()
         worker.shutdownNow()
         super.onDestroy()
+    }
+
+    @Synchronized
+    private fun acquireWakeLock() {
+        if (wakeLock?.isHeld == true) return
+        val powerManager = getSystemService(PowerManager::class.java)
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "$packageName:MiracleKlipperVM").apply {
+            setReferenceCounted(false)
+            acquire()
+        }
+    }
+
+    @Synchronized
+    private fun releaseWakeLock() {
+        val current = wakeLock
+        if (current?.isHeld == true) current.release()
+        wakeLock = null
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
