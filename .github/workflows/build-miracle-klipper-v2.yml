@@ -19,6 +19,10 @@ on:
       - '.github/workflows/build-miracle-klipper-v2.yml'
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -47,6 +51,9 @@ jobs:
           sh -n v2/runtime/klipper/miracle-klipper-instances.sh
           sh -n v2/runtime/klipper/miracle-klipper-firmware.sh
           python3 -m json.tool v2/runtime/klipper/klipper.lock.json >/dev/null
+          bash -n scripts/build-alpine-guest.sh
+          bash -n scripts/assemble-runtime-bundle.sh
+          bash -n scripts/prepare-qemu-headless-recipe.sh
 
       - uses: actions/setup-java@v4
         with:
