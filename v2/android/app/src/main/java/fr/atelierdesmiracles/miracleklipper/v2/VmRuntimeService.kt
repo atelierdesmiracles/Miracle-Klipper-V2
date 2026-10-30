@@ -75,6 +75,7 @@ class VmRuntimeService : Service() {
                 initrdImage = initrd,
                 diskImage = disk,
                 diskFormat = manifest.diskFormat,
+                usbSerialPort = UsbSerialBridge.localPort,
                 qmpSocket = File(filesDir, "miracle-vm/run/qmp.sock"),
                 serialLog = File(filesDir, "miracle-vm/logs/serial.log"),
                 processLog = File(filesDir, "miracle-vm/logs/qemu.log"),
