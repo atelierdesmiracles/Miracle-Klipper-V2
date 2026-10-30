@@ -56,7 +56,7 @@ The SHA-256 manifest detects file corruption or a payload that does not match it
 | `127.0.0.1:7125` | TCP hostfwd | Moonraker on guest port 7125 |
 | `127.0.0.1:<ephemeral>` | QEMU socket chardev | virtio-serial → socat → `/dev/ttyUSB0` |
 
-The QEMU hostfwd listener is bound to Android loopback. Do not change it to `0.0.0.0` without an explicit authentication and security review. Moonraker trusts the QEMU user-network source subnet and must not be exposed directly to an untrusted LAN.
+The guest nginx and Moonraker daemons bind to `0.0.0.0` inside the isolated QEMU user network so host forwarding can reach them. The QEMU hostfwd listeners bind only to Android `127.0.0.1`; do not change the host-side bind to `0.0.0.0` without an explicit authentication and security review. The guest is not bridged onto the phone's LAN. Moonraker trusts the QEMU user-network source subnet and must not be exposed directly to an untrusted LAN. Loopback-only host binding reduces network exposure but is not an Android per-app access-control boundary.
 
 ## Klipper and Moonraker lifecycle
 
