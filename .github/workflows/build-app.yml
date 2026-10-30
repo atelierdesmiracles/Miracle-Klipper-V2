@@ -107,9 +107,14 @@ jobs:
         working-directory: ./app
         run: bash ./gradlew --no-daemon assembleDebug
 
+      # Bugsnag uploads require a project API key that is intentionally not present in CI.
+      # Skip both mapping upload tasks; APK packaging and native compilation still run.
       - name: Build release APK
         working-directory: ./app
-        run: bash ./gradlew --no-daemon assembleRelease -x bugsnagReleaseReleaseTask
+        run: |
+          bash ./gradlew --no-daemon assembleRelease \
+            -x bugsnagReleaseReleaseTask \
+            -x uploadBugsnagNdkReleaseMapping
 
       - name: Upload APKs and test reports
         if: always()
