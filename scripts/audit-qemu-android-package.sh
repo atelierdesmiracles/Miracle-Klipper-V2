@@ -31,9 +31,8 @@ if ! "$READELF" -h "$BIN" | grep -Eq 'Machine:.*AArch64'; then
   echo "ERROR: executable is not AArch64" >&2
   FAIL=1
 fi
-if "$READELF" -d "$BIN" | grep -Eq 'Library (runpath|rpath): \[/data/data/com\.termux/'; then
-  echo "ERROR: absolute Termux RPATH/RUNPATH is not app-private" >&2
-  FAIL=1
+if "$READELF" -d "$BIN" | grep -Eq 'Library (runpath|rpath): \\[/data/data/com\\.termux/'; then
+  echo "INFO: raw Termux build-prefix RUNPATH will be replaced by the runtime assembler."
 fi
 if "$READELF" -d "$BIN" | grep -Eq 'Shared library: \[(libasound|libpulse|libjack|libSDL|libgtk|libX11|libspice|libvirgl)'; then
   echo "ERROR: desktop/audio dependency remains in headless QEMU" >&2
@@ -45,4 +44,4 @@ if [ "$FAIL" -ne 0 ]; then
   exit 1
 fi
 
-echo "QEMU package audit passed. This is an ELF/package audit only; it does not prove runtime execution on a phone."
+echo "Pre-bundle QEMU ELF audit passed. Runtime assembly must relocate RPATH and verify the complete shared-library closure; this does not prove execution on a phone."
