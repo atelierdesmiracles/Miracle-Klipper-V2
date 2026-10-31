@@ -32,9 +32,22 @@ class QemuProcessController {
                     }
                     config.serialLog.parentFile?.mkdirs()
                     config.processLog.parentFile?.mkdirs()
+                    // Launch Android NDK/Termux ELF binaries through Bionic's
+                    // dynamic linker explicitly. Some Android environments return
+                    // ENOEXEC for app-private ELF paths; ProcessBuilder then exposes
+                    // the misleading shell error "syntax error: unexpected '&'".
+                    val androidLinker = File("/system/bin/linker64")
+                    if (!androidLinker.isFile || !androidLinker.canExecute()) {
+                        return QemuStartResult.Failed(
+                            "Le linker Android /system/bin/linker64 est absent ou non exécutable."
+                        )
+                    }
+                    val launchCommand = listOf(androidLinker.absolutePath) + preflight.command
                     config.processLog.appendText(
                         "\n\n=== Miracle Klipper QEMU launch ===\n" +
                             "time=" + System.currentTimeMillis() + "\n" +
+                            "androidLinker=" + androidLinker.absolutePath + "\n" +
+                            "androidLinkerExists=" + androidLinker.isFile + "\n" +
                             "binary=" + config.qemuBinary.absolutePath + "\n" +
                             "binaryExists=" + config.qemuBinary.isFile + "\n" +
                             "binaryExecutable=" + config.qemuBinary.canExecute() + "\n" +
@@ -42,9 +55,9 @@ class QemuProcessController {
                             "libraryDirectory=" + (config.libraryDirectory?.absolutePath ?: "(none)") + "\n" +
                             "libraryDirectoryExists=" + (config.libraryDirectory?.isDirectory ?: false) + "\n" +
                             "workingDirectory=" + workingDirectory.absolutePath + "\n" +
-                            "command=" + preflight.command.joinToString(" ") + "\n"
+                            "command=" + launchCommand.joinToString(" ") + "\n"
                     )
-                    val builder = ProcessBuilder(preflight.command)
+                    val builder = ProcessBuilder(launchCommand)
                         .directory(workingDirectory)
                         .redirectErrorStream(true)
                         .redirectOutput(ProcessBuilder.Redirect.appendTo(config.processLog))
