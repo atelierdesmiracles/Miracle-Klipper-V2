@@ -27,16 +27,27 @@ if [ ! -d "$LIBDIR" ]; then
   [ -d "$LIBDIR" ] || LIBDIR="$PREFIX/lib"
 fi
 [ -d "$LIBDIR" ] || { echo "Termux library directory missing: $LIBDIR" >&2; exit 1; }
+copied_libraries=0
 while IFS= read -r -d '' lib; do
+  # Termux may ship linker-script text files with .so names. Android's
+  # dynamic loader needs ELF shared objects; patchelf must never process text.
+  if ! readelf -h "$lib" >/dev/null 2>&1; then
+    echo "Skipping non-ELF shared-library entry: $(basename "$lib")"
+    continue
+  fi
   name="$(basename "$lib")"
   cp -L "$lib" "$BUNDLE/lib/$name"
+  copied_libraries=$((copied_libraries + 1))
 done < <(find "$LIBDIR" -maxdepth 1 \( -type f -o -type l \) \( -name '*.so' -o -name '*.so.*' \) -print0)
 
-[ -n "$(find "$BUNDLE/lib" -type f -name '*.so*' -print -quit)" ] || { echo "No shared libraries copied from Termux prefix" >&2; exit 1; }
+[ "$copied_libraries" -gt 0 ] || { echo "No ELF shared libraries copied from Termux prefix" >&2; exit 1; }
 
 # Convert package build-time Termux paths to relocatable paths relative to this bundle.
 patchelf --set-rpath '$ORIGIN/../lib' "$BUNDLE/bin/qemu-system-aarch64"
-while IFS= read -r -d '' lib; do patchelf --set-rpath '$ORIGIN' "$lib"; done < <(find "$BUNDLE/lib" -type f -name '*.so*' -print0)
+while IFS= read -r -d '' lib; do
+  readelf -h "$lib" >/dev/null 2>&1 || { echo "Non-ELF file unexpectedly staged in lib/: $lib" >&2; exit 1; }
+  patchelf --set-rpath '$ORIGIN' "$lib"
+done < <(find "$BUNDLE/lib" -type f -name '*.so*' -print0)
 
 
 LICENSE_SOURCE="$PREFIX/share/miracle-klipper/licenses"
