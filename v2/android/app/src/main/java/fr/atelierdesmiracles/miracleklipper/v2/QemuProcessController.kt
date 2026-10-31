@@ -32,6 +32,18 @@ class QemuProcessController {
                     }
                     config.serialLog.parentFile?.mkdirs()
                     config.processLog.parentFile?.mkdirs()
+                    config.processLog.appendText(
+                        "\n\n=== Miracle Klipper QEMU launch ===\n" +
+                            "time=" + System.currentTimeMillis() + "\n" +
+                            "binary=" + config.qemuBinary.absolutePath + "\n" +
+                            "binaryExists=" + config.qemuBinary.isFile + "\n" +
+                            "binaryExecutable=" + config.qemuBinary.canExecute() + "\n" +
+                            "binaryReadable=" + config.qemuBinary.canRead() + "\n" +
+                            "libraryDirectory=" + (config.libraryDirectory?.absolutePath ?: "(none)") + "\n" +
+                            "libraryDirectoryExists=" + (config.libraryDirectory?.isDirectory ?: false) + "\n" +
+                            "workingDirectory=" + workingDirectory.absolutePath + "\n" +
+                            "command=" + preflight.command.joinToString(" ") + "\n"
+                    )
                     val builder = ProcessBuilder(preflight.command)
                         .directory(workingDirectory)
                         .redirectErrorStream(true)
@@ -44,13 +56,36 @@ class QemuProcessController {
                                 else libraryDir.absolutePath + File.pathSeparator + previous
                         }
                     }
-                    process = builder.start()
+                    val launched = builder.start()
+                    // Catch Android exec/linker failures and QEMU argument errors immediately.
+                    // Without this check the UI reports "VM started" even when QEMU exits at once.
+                    val exitedImmediately = try {
+                        launched.waitFor(1500L, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    } catch (interrupted: InterruptedException) {
+                        Thread.currentThread().interrupt()
+                        launched.destroy()
+                        return QemuStartResult.Failed("Attente du démarrage QEMU interrompue.")
+                    }
+                    if (exitedImmediately) {
+                        val exitCode = launched.exitValue()
+                        val details = readLogTail(config.processLog)
+                        return QemuStartResult.Failed(
+                            "QEMU s'est arrêté immédiatement (code $exitCode)." +
+                                if (details.isBlank()) " Aucun détail dans qemu-process.log."
+                                else "\n" + details
+                        )
+                    }
+                    process = launched
                     qmpSocket = config.qmpSocket
-                    QemuStartResult.Started(process!!)
+                    QemuStartResult.Started(launched)
                 } catch (error: IOException) {
-                    QemuStartResult.Failed(error.message ?: "Échec du lancement de QEMU.")
+                    val details = readLogTail(config.processLog)
+                    QemuStartResult.Failed(
+                        "Impossible d'exécuter QEMU : " + (error.message ?: error.javaClass.simpleName) +
+                            if (details.isBlank()) "" else "\n" + details
+                    )
                 } catch (error: SecurityException) {
-                    QemuStartResult.Failed(error.message ?: "Android a refusé le lancement de QEMU.")
+                    QemuStartResult.Failed("Android a refusé le lancement de QEMU : " + (error.message ?: "permission refusée"))
                 }
             }
         }
@@ -121,6 +156,15 @@ class QemuProcessController {
     }
 
     fun isRunning(): Boolean = process?.isAlive == true
+
+    private fun readLogTail(file: File, maxChars: Int = 5000): String {
+        if (!file.isFile) return ""
+        return try {
+            file.readText().takeLast(maxChars).trim()
+        } catch (_: Exception) {
+            "(journal QEMU illisible)"
+        }
+    }
 }
 
 sealed class QemuStartResult {
