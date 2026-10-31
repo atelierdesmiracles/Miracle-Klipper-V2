@@ -91,7 +91,7 @@ configure = r'''termux_step_configure() {
 }
 
 termux_step_post_make_install() {
-  local runtime_dir="$TERMUX_PKG_MASSAGEDIR$TERMUX_PREFIX/share/miracle-klipper"
+  local runtime_dir="$TERMUX_PREFIX/share/miracle-klipper"
   mkdir -p "$runtime_dir/lib" "$runtime_dir/licenses"
   find "$TERMUX_PREFIX/lib" -maxdepth 1 \( -type f -o -type l \) -name "*.so*" -exec cp -L {} "$runtime_dir/lib/" \;
   if [ -d "$TERMUX_PREFIX/share/doc" ]; then cp -a "$TERMUX_PREFIX/share/doc/." "$runtime_dir/licenses/"; fi
