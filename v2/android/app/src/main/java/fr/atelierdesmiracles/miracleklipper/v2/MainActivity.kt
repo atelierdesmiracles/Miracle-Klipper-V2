@@ -34,6 +34,7 @@ class MainActivity : Activity() {
     private lateinit var usbDeviceSpinner: Spinner
     private lateinit var usbBaudRate: EditText
     private var usbDevices: List<UsbSerialDeviceInfo> = emptyList()
+    private var runtimeDownloadInProgress = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -127,7 +128,11 @@ class MainActivity : Activity() {
         runtimeStatus = label("", 14, 0xFF17283B.toInt(), false)
         content.addView(runtimeStatus)
         content.addView(Button(this).apply {
-            text = "Importer le runtime QEMU + Alpine (ZIP)"
+            text = "Télécharger / mettre à jour automatiquement"
+            setOnClickListener { startRuntimeDownload(force = true) }
+        })
+        content.addView(Button(this).apply {
+            text = "Importer manuellement le runtime (ZIP)"
             setOnClickListener {
                 val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                     addCategory(Intent.CATEGORY_OPENABLE)
@@ -222,6 +227,46 @@ class MainActivity : Activity() {
         updateReport()
         refreshMusicStatus()
         refreshRuntimeStatus()
+        // Automatically fetch the published runtime when missing, or install a
+        // newer verified build when its SHA-256 differs from the installed one.
+        startRuntimeDownload(force = false)
+    }
+
+    private fun startRuntimeDownload(force: Boolean) {
+        if (runtimeDownloadInProgress) {
+            runtimeStatus.text = "Un téléchargement ou une installation est déjà en cours."
+            return
+        }
+        if (VmRuntimeService.running) {
+            runtimeStatus.text = "Arrêtez la machine virtuelle avant de mettre à jour le runtime."
+            return
+        }
+        runtimeDownloadInProgress = true
+        runtimeStatus.text = "Connexion à la publication officielle Miracle Klipper…"
+        Thread {
+            val result = RuntimeBundleDownloader.downloadAndInstall(applicationContext, force) { message ->
+                runOnUiThread {
+                    if (::runtimeStatus.isInitialized) runtimeStatus.text = message
+                }
+            }
+            runOnUiThread {
+                runtimeDownloadInProgress = false
+                runtimeStatus.text = when (result) {
+                    is RuntimeDownloadResult.Installed ->
+                        "Runtime téléchargé, SHA-256 vérifié et installé (" + (result.bytes / 1048576L) + " Mo). Vous pouvez démarrer la VM."
+                    RuntimeDownloadResult.AlreadyCurrent ->
+                        "Runtime déjà installé et à jour. SHA-256 confirmé."
+                    is RuntimeDownloadResult.Failed ->
+                        "Téléchargement automatique indisponible : " + result.reason +
+                            "\\nVous pouvez réessayer avec le bouton de téléchargement."
+                }
+                refreshRuntimeStatusAfterDownload()
+            }
+        }.apply { name = "MiracleKlipper-RuntimeDownload"; isDaemon = true; start() }
+    }
+
+    private fun refreshRuntimeStatusAfterDownload() {
+        updateReport()
     }
 
     @Deprecated("Deprecated in Android; retained for compatibility with the current minimal Activity")
