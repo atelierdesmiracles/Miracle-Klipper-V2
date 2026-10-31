@@ -55,6 +55,9 @@ jobs:
           docker image inspect ghcr.io/termux/package-builder --format '{{.Id}}' > ../qemu-output/builder-image-id.txt
           docker image inspect ghcr.io/termux/package-builder --format '{{join .RepoDigests "\n"}}' > ../qemu-output/builder-image-digests.txt
           git rev-parse HEAD > ../qemu-output/termux-packages-commit.txt
+          # Export the actual dependency runtime installed in the persistent Termux builder.
+          mkdir -p ../qemu-output/termux-lib
+          docker cp termux-package-builder:/data/data/com.termux/files/usr/lib/. ../qemu-output/termux-lib/
 
       - name: Collect and normalize QEMU package outputs
         if: always()
