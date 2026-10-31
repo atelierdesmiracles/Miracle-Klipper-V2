@@ -21,13 +21,17 @@ PREFIX="$(find "$PKGROOT" -type d -path '*/data/data/com.termux/files/usr' -prin
 QEMU="$(find "$PREFIX" -type f -name qemu-system-aarch64 -print -quit)"
 [ -n "$QEMU" ] || { echo "qemu-system-aarch64 executable not found in extracted packages" >&2; exit 1; }
 install -m 0755 "$QEMU" "$BUNDLE/bin/qemu-system-aarch64"
-LIBDIR="$PREFIX/share/miracle-klipper/lib"
-[ -d "$LIBDIR" ] || LIBDIR="$PREFIX/lib"
+LIBDIR="$QEMU_PACKAGES/termux-lib"
+if [ ! -d "$LIBDIR" ]; then
+  LIBDIR="$PREFIX/share/miracle-klipper/lib"
+  [ -d "$LIBDIR" ] || LIBDIR="$PREFIX/lib"
+fi
 [ -d "$LIBDIR" ] || { echo "Termux library directory missing: $LIBDIR" >&2; exit 1; }
 while IFS= read -r -d '' lib; do
   name="$(basename "$lib")"
   cp -L "$lib" "$BUNDLE/lib/$name"
 done < <(find "$LIBDIR" -maxdepth 1 \( -type f -o -type l \) \( -name '*.so' -o -name '*.so.*' \) -print0)
+
 [ -n "$(find "$BUNDLE/lib" -type f -name '*.so*' -print -quit)" ] || { echo "No shared libraries copied from Termux prefix" >&2; exit 1; }
 
 # Convert package build-time Termux paths to relocatable paths relative to this bundle.
