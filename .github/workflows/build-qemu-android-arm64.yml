@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-qemu:
@@ -121,6 +121,20 @@ jobs:
           path: runtime-output/*
           if-no-files-found: error
           retention-days: 30
+      - name: Publish verified runtime for automatic Android downloads
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: miracle-klipper-runtime-latest
+          name: Miracle Klipper V2 — Runtime ARM64 (latest)
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          make_latest: false
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          files: |
+            runtime-output/miracle-klipper-runtime-alpine-3.24.3-arm64.zip
+            runtime-output/miracle-klipper-runtime-alpine-3.24.3-arm64.zip.sha256
       - name: Upload QEMU package artifacts and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
