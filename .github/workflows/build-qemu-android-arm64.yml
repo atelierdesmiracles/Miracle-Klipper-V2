@@ -55,9 +55,15 @@ jobs:
           docker image inspect ghcr.io/termux/package-builder --format '{{.Id}}' > ../qemu-output/builder-image-id.txt
           docker image inspect ghcr.io/termux/package-builder --format '{{join .RepoDigests "\n"}}' > ../qemu-output/builder-image-digests.txt
           git rev-parse HEAD > ../qemu-output/termux-packages-commit.txt
-          # Export the actual dependency runtime installed in the persistent Termux builder.
+          # Export only shared objects. Copying the whole lib directory also copies
+          # unrelated/broken symlinks (for example terminfo -> ../share/terminfo).
           mkdir -p ../qemu-output/termux-lib
-          docker cp termux-package-builder:/data/data/com.termux/files/usr/lib/. ../qemu-output/termux-lib/
+          docker exec termux-package-builder sh -c '
+            cd /data/data/com.termux/files/usr/lib
+            find . -maxdepth 1 -type f -o -type l |
+              grep -E "\\./[^/]+\\.so(\\.[0-9]+)*$" |
+              tar -chf - -T -
+          ' | tar -xf - -C ../qemu-output/termux-lib
 
       - name: Collect and normalize QEMU package outputs
         if: always()
@@ -70,7 +76,7 @@ jobs:
             done < <(find termux-packages/output -type f \( -name '*.deb' -o -name '*.tar.xz' \) -print0)
           fi
           if [ -n "$(find qemu-output -type f ! -name 'SHA256SUMS' -print -quit)" ]; then
-            (cd qemu-output && sha256sum * > SHA256SUMS)
+            (cd qemu-output && find . -type f ! -name 'SHA256SUMS' -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS)
           fi
 
       - name: Audit Android QEMU ELF package
