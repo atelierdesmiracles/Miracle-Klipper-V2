@@ -10,9 +10,10 @@ import sys
 path = Path(sys.argv[1])
 text = path.read_text()
 
+# Keep the dependency declaration aligned with the headless configure flags.
 text, count = re.subn(
     r'^TERMUX_PKG_DEPENDS=.*$',
-    'TERMUX_PKG_DEPENDS="dtc, glib, libandroid-shmem, libpixman, libslirp, qemu-common, resolv-conf, zlib, zstd"',
+    'TERMUX_PKG_DEPENDS="dtc, elfutils, glib, libandroid-shmem, libpixman, libslirp, qemu-common, resolv-conf, zlib, zstd"',
     text,
     count=1,
     flags=re.M,
@@ -93,6 +94,8 @@ configure = r'''termux_step_configure() {
 termux_step_post_make_install() {
   local runtime_dir="$TERMUX_PREFIX/share/miracle-klipper"
   mkdir -p "$runtime_dir/lib" "$runtime_dir/licenses"
+  # Stage the runtime closure directly into the Termux prefix so the
+  # generated package actually contains the libraries expected by Android.
   find "$TERMUX_PREFIX/lib" -maxdepth 1 \( -type f -o -type l \) -name "*.so*" -exec cp -L {} "$runtime_dir/lib/" \;
   if [ -d "$TERMUX_PREFIX/share/doc" ]; then cp -a "$TERMUX_PREFIX/share/doc/." "$runtime_dir/licenses/"; fi
   ln -sfr "$TERMUX_PREFIX/share/man/man1/qemu.1" "$TERMUX_PREFIX/share/man/man1/qemu-system-aarch64.1"
@@ -107,6 +110,7 @@ text, count = re.subn(
 )
 if count != 1:
     raise SystemExit("Could not replace QEMU configure function")
+
 path.write_text(text)
 print(f"Prepared headless QEMU recipe: {path}")
 PY
