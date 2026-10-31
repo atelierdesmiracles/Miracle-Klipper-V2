@@ -20,7 +20,7 @@ sealed class RuntimeDownloadResult {
 object RuntimeBundleDownloader {
     private const val RELEASE_API = "https://api.github.com/repos/atelierdesmiracles/Miracle-Klipper-V2/releases/tags/miracle-klipper-runtime-latest"
     private const val ARCHIVE_NAME = "miracle-klipper-runtime-alpine-3.24.3-arm64.zip"
-    private const val CHECKSUM_NAME = "$" + "ARCHIVE_NAME.sha256"
+    private const val CHECKSUM_NAME = "miracle-klipper-runtime-alpine-3.24.3-arm64.zip.sha256"
     private const val PREFS = "miracle_runtime_download"
     private const val PREF_SHA = "installed_archive_sha256"
     private val client = OkHttpClient.Builder()
@@ -31,7 +31,7 @@ object RuntimeBundleDownloader {
 
     fun downloadAndInstall(context: Context, force: Boolean = false, onProgress: (String) -> Unit = {}): RuntimeDownloadResult {
         val app = context.applicationContext
-        val archive = File(app.cacheDir, "$" + "ARCHIVE_NAME.part")
+        val archive = File(app.cacheDir, "miracle-klipper-runtime-alpine-3.24.3-arm64.zip.part")
         val finalArchive = File(app.cacheDir, ARCHIVE_NAME)
         try {
             onProgress("Recherche du runtime Miracle Klipper sur GitHub…")
