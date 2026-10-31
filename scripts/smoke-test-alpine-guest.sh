@@ -41,12 +41,20 @@ try:
         child = pexpect.spawn(command[0], command[1:], encoding="utf-8", timeout=75)
         child.logfile = log
         child.expect(r"#\s*$", timeout=75)
+        # BusyBox ash may issue a terminal Device Status Report request
+        # (ESC[6n) while drawing its prompt. Reply with a valid cursor
+        # position before sending shell commands, otherwise the guest shell
+        # waits for terminal input and pexpect times out despite a successful boot.
+        child.send("\\x1b[1;1R")
         child.setecho(False)
-        child.sendline("mount -t devtmpfs devtmpfs /dev 2>/dev/null || true")
-        child.sendline("modprobe virtio_console 2>/dev/null || true")
-        child.sendline("sleep 1")
-        child.sendline("test -e /dev/virtio-ports/org.miracle.usbserial && echo MIRACLE_VIRTIO_SERIAL_OK")
-        child.sendline("echo MIRACLE_ALPINE_ROOTFS_BOOT_OK")
+        child.sendline(
+            "mount -t devtmpfs devtmpfs /dev 2>/dev/null || true; "
+            "modprobe virtio_console 2>/dev/null || true; "
+            "sleep 1; "
+            "if test -e /dev/virtio-ports/org.miracle.usbserial; then "
+            "echo MIRACLE_VIRTIO_SERIAL_OK; else echo MIRACLE_VIRTIO_SERIAL_MISSING; fi; "
+            "echo MIRACLE_ALPINE_ROOTFS_BOOT_OK"
+        )
         child.expect("MIRACLE_VIRTIO_SERIAL_OK", timeout=15)
         child.expect("MIRACLE_ALPINE_ROOTFS_BOOT_OK", timeout=15)
     print("Alpine ARM64 kernel, initramfs, QCOW2 root filesystem and virtio serial boot passed.")
