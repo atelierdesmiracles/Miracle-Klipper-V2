@@ -9,7 +9,7 @@ BUNDLE="$WORK/bundle"
 mkdir -p "$PKGROOT" "$BUNDLE/bin" "$BUNDLE/lib" "$BUNDLE/boot" "$BUNDLE/disk" "$BUNDLE/licenses" "$OUT"
 cleanup(){ rm -rf "$WORK"; }
 trap cleanup EXIT
-for command in dpkg-deb readelf patchelf python3 zip sha256sum; do
+for command in dpkg-deb readelf patchelf python3 sha256sum; do
   command -v "$command" >/dev/null || { echo "Missing tool: $command" >&2; exit 2; }
 done
 shopt -s nullglob
@@ -135,8 +135,45 @@ manifest={
 print(f"Manifest contains {len(files)} SHA-256 entries.")
 PY
 ARCHIVE="$OUT/miracle-klipper-runtime-alpine-3.24.3-arm64.zip"
-rm -f "$ARCHIVE"
-(cd "$BUNDLE" && zip -1 -r "$ARCHIVE" bin boot disk lib licenses manifest.json >/dev/null)
+rm -f "$ARCHIVE" "$ARCHIVE.sha256"
+# Build the archive with Python's streaming ZIP writer. The QCOW2 image is
+# already compressed, so store it without recompressing hundreds of MB of data.
+# This avoids Info-ZIP exit 15 / runner termination on large guest images.
+python3 - "$BUNDLE" "$ARCHIVE" <<'PY'
+from pathlib import Path
+from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED
+import sys
+
+root = Path(sys.argv[1])
+archive = Path(sys.argv[2])
+files = sorted(p for p in root.rglob("*") if p.is_file())
+if not files:
+    raise SystemExit("Runtime bundle is empty; refusing to create archive")
+
+with ZipFile(archive, "w", allowZip64=True) as zf:
+    for path in files:
+        relative = path.relative_to(root).as_posix()
+        compression = ZIP_STORED if relative == "disk/rootfs.qcow2" else ZIP_DEFLATED
+        print(f"Adding {relative} ({path.stat().st_size} bytes)", flush=True)
+        zf.write(path, relative, compress_type=compression, compresslevel=1 if compression == ZIP_DEFLATED else None)
+
+with ZipFile(archive, "r") as zf:
+    bad = zf.testzip()
+    if bad:
+        raise SystemExit(f"ZIP integrity check failed at: {bad}")
+    names = set(zf.namelist())
+    required = {
+        "bin/qemu-system-aarch64",
+        "boot/Image",
+        "boot/initramfs",
+        "disk/rootfs.qcow2",
+        "manifest.json",
+    }
+    missing = sorted(required - names)
+    if missing:
+        raise SystemExit("Runtime archive is missing required files: " + ", ".join(missing))
+    print(f"Runtime ZIP verified: {len(names)} files", flush=True)
+PY
 sha256sum "$ARCHIVE" > "$ARCHIVE.sha256"
 echo "Runtime bundle: $ARCHIVE"
 du -h "$ARCHIVE"
