@@ -59,7 +59,7 @@ object RuntimeBundleDownloader {
             require(expected.matches(Regex("[a-f0-9]{64}"))) { "Le fichier SHA-256 publié est invalide." }
 
             val installedSha = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(PREF_SHA, null)
-            if (!force && installedSha == expected && RuntimeBundleInstaller.isInstalled(app)) return RuntimeDownloadResult.AlreadyCurrent
+            if (!force && installedSha == expected && RuntimeBundleInstaller.verifyInstalled(app)) return RuntimeDownloadResult.AlreadyCurrent
             require(!VmRuntimeService.running) { "Arrêtez la machine virtuelle avant de mettre à jour son runtime." }
             val available = StatFs(app.filesDir.absolutePath).availableBytes
             val required = maxOf(archiveSize * 2L + 256L * 1024L * 1024L, 768L * 1024L * 1024L)
