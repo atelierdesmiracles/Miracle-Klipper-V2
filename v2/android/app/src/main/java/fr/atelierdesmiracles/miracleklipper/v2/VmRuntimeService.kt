@@ -138,7 +138,12 @@ class VmRuntimeService : Service() {
                     Thread { awaitGuestServices() }.apply { name = "MiracleKlipper-Readiness"; isDaemon = true; start() }
                     Thread {
                         try {
-                            result.process.waitFor()
+                            val exitCode = result.process.waitFor()
+                            if (!stopping.get()) {
+                                val detail = "QEMU s'est arrêté (code $exitCode). Consultez les journaux QEMU dans l'application."
+                                publishMonitorStatus(detail)
+                                updateNotification(detail)
+                            }
                         } catch (_: InterruptedException) {
                             Thread.currentThread().interrupt()
                         } finally {
@@ -147,7 +152,6 @@ class VmRuntimeService : Service() {
                             completionMusic.stop()
                             releaseWakeLock()
                             if (!stopping.get()) {
-                                updateNotification("La VM s’est arrêtée. Consultez les journaux.")
                                 mainHandler.post { stopSelf(startId) }
                             }
                         }
@@ -163,7 +167,9 @@ class VmRuntimeService : Service() {
             printMonitor.disconnect()
             completionMusic.stop()
             releaseWakeLock()
-            updateNotification("Démarrage impossible : " + (error.message ?: "erreur inconnue"))
+            val detail = "Démarrage impossible : " + (error.message ?: error.javaClass.simpleName)
+            publishMonitorStatus(detail)
+            updateNotification(detail.take(180))
             mainHandler.post { stopSelf(startId) }
         }
     }
