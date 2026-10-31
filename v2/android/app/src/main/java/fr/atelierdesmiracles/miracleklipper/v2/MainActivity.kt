@@ -1,6 +1,7 @@
 package fr.atelierdesmiracles.miracleklipper.v2
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.ActivityManager
 import android.content.pm.PackageManager
 import android.os.Build
@@ -162,6 +163,10 @@ class MainActivity : Activity() {
             }
         })
         content.addView(Button(this).apply {
+            text = "Afficher les journaux QEMU"
+            setOnClickListener { showQemuLogs() }
+        })
+        content.addView(Button(this).apply {
             text = "Ouvrir Mainsail"
             setOnClickListener { startActivity(Intent(this@MainActivity, MainsailActivity::class.java)) }
         })
@@ -296,6 +301,32 @@ class MainActivity : Activity() {
                 musicStatus.text = "Impossible de conserver l’accès à ce fichier audio."
             }
         }
+    }
+
+    private fun showQemuLogs() {
+        val logDir = File(filesDir, "miracle-vm/logs")
+        val processLog = File(logDir, "qemu.log")
+        val serialLog = File(logDir, "serial.log")
+        val content = buildString {
+            appendLine("=== JOURNAL DE LANCEMENT QEMU ===")
+            appendLine("Fichier : " + processLog.absolutePath)
+            appendLine()
+            appendLine(if (processLog.isFile) processLog.readText().takeLast(14000) else "Aucun journal QEMU créé.")
+            appendLine()
+            appendLine("=== JOURNAL SÉRIE INVITÉ ===")
+            appendLine("Fichier : " + serialLog.absolutePath)
+            appendLine()
+            append(if (serialLog.isFile) serialLog.readText().takeLast(10000) else "Aucun journal série créé.")
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Diagnostic de la machine virtuelle")
+            .setMessage(content)
+            .setPositiveButton("Fermer", null)
+            .setNeutralButton("Copier") { _, _ ->
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Journaux Miracle Klipper", content))
+            }
+            .show()
     }
 
     private fun refreshRuntimeStatus() {
