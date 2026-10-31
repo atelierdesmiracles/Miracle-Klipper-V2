@@ -23,7 +23,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-test:
@@ -105,3 +105,18 @@ jobs:
           path: v2/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish installable debug APK on stable GitHub Release
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: miracle-klipper-v2-android-latest
+          name: Miracle Klipper V2 Android — latest test build
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          make_latest: false
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          files: |
+            v2/android/app/build/outputs/apk/debug/*.apk
+            v2/android/app/build/outputs/apk/release/*.apk
